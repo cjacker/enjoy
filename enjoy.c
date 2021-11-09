@@ -31,6 +31,7 @@ int axis_right_press = 0;
 int axis_x_direction = 0;
 int axis_y_direction = 0;
 
+Bool thread_created = True;
 pthread_t mouse_move_thread_t;
 
 /* structure to store configurations */
@@ -417,10 +418,14 @@ int main(int argc, char *argv[])
                         axis_x_direction = axes[axis].x/32767;
                         axis_y_direction = axes[axis].y/32767;
                         //printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y);
-                        if(axes[axis].x == 0 && axes[axis].y == 0) 
+                        if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(mouse_move_thread_t, NULL);
-                        else
+                            thread_created = False;
+                        }
+                        else if(!thread_created) {
                             pthread_create(&mouse_move_thread_t, NULL, mouse_move_thread, (void *)disp);
+                            thread_created = True;
+                        }
                     }
                 }
                 break;
