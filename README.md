@@ -3,6 +3,8 @@
 
 Recently, I got a device named [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse/key events.
 
+![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
+
 > 最近大家都'捐'，我也想把这2小时写完的代码捐给**开放原子基金会**。。。
 
 > (If you do not understand, it's joke, just ignore it)
