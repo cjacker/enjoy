@@ -118,8 +118,9 @@ void *mouse_move_thread(void * disp) {
          &event.xbutton.y_root, &event.xbutton.x, &event.xbutton.y,
          &event.xbutton.state);
     XTestFakeMotionEvent (disp, 0, event.xbutton.x + axis_x_direction, event.xbutton.y + axis_y_direction, CurrentTime);
-    XFlush(disp);
-    usleep(10000);
+    //seems not needed?
+    //XFlush(disp);
+    usleep(6000);
   }
 }
 
