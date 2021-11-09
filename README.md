@@ -15,8 +15,8 @@ The hardcode configuration is:
 device=/dev/input/js0
 button_a=mouse_click_1
 button_b=mouse_click_3
-button_x=Control_L
-button_y=Shift_L
+button_x=Super_L
+button_y=Control_L
 button_select=Super_L+End
 button_start=Super_L+d
 axis_as_mouse=1

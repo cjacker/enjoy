@@ -57,8 +57,8 @@ config *create_default_config()
     p->axis_as_mouse = 1;
     p->button_a = "mouse_click_1";
     p->button_b = "mouse_click_3";
-    p->button_x = "Control_L";
-    p->button_y = "Shift_L";
+    p->button_x = "Super_L";
+    p->button_y = "Control_L";
     p->button_select = "Super_L+End";
     p->button_start = "Super_L+d";
     p->axis_up = "Up";
