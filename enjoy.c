@@ -33,6 +33,8 @@ typedef struct config {
   char *button_b;
   char *button_x;
   char *button_y;
+  char *button_select;
+  char *button_start;
   char *axis_up;
   char *axis_down;
   char *axis_left;
@@ -49,6 +51,8 @@ config *create_default_config()
   p->button_b = "mouse_click_3";
   p->button_x = "Control_L";
   p->button_y = "Shift_L";
+  p->button_select = "Super_L+End";
+  p->button_start = "Super_L+d";
   p->axis_up = "Up";
   p->axis_down = "Down";
   p->axis_left = "Left";
@@ -64,6 +68,8 @@ void print_config(config *conf)
   printf("button_b map to: %s\n", conf->button_b);
   printf("button_x map to: %s\n", conf->button_x);
   printf("button_y map to: %s\n", conf->button_y);
+  printf("button_select map to: %s\n", conf->button_select);
+  printf("button_start map to: %s\n", conf->button_start);
   printf("axis as mouse: %d\n", conf->axis_as_mouse);
   printf("axis_up map to: %s\n", conf->axis_up);
   printf("axis_down map to: %s\n", conf->axis_down);
@@ -271,6 +277,8 @@ void help()
   printf("  button_b=mouse_click_3\n");
   printf("  button_x=Control_L\n");
   printf("  button_y=Shift_L\n");
+  printf("  button_select=Super_L+End\n");
+  printf("  button_start=Super_L+d\n");
   printf("  axis_as_mouse=1\n");
   printf("  axis_up=Up\n");
   printf("  axis_down=Down\n");
@@ -330,6 +338,10 @@ int main(int argc, char *argv[])
             conf->button_x=strdup(value);
         else if (strcmp(key, "button_y") == 0)
             conf->button_y=strdup(value);
+        else if (strcmp(key, "button_select") == 0)
+            conf->button_select=strdup(value);
+        else if (strcmp(key, "button_start") == 0)
+            conf->button_start=strdup(value);
         else if (strcmp(key, "axis_up") == 0)
             conf->axis_up=strdup(value);
         else if (strcmp(key, "axis_down") == 0)
@@ -365,6 +377,8 @@ int main(int argc, char *argv[])
 	    case 1: fake_event(disp, conf->button_a, event.value); break;
 	    case 2: fake_event(disp, conf->button_b, event.value); break;
 	    case 3: fake_event(disp, conf->button_y, event.value); break;
+	    case 8: fake_event(disp, conf->button_select, event.value); break;
+	    case 9: fake_event(disp, conf->button_start, event.value); break;
 	    default: break;
 	    }
 	case JS_EVENT_AXIS:
