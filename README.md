@@ -3,7 +3,7 @@
 
 Recently, I got a device named [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse/key events.
 
-By default, the hardcode configuration is:
+The hardcode configuration is:
 
 ```
 device=/dev/input/js0
@@ -41,4 +41,5 @@ If you want to map axis to keys or mouse button, please set:
 axis_as_mouse=0
 ```
 
+Finally, `enjoy`.
 
