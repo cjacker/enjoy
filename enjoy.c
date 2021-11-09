@@ -17,6 +17,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
+
 #include <linux/joystick.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
@@ -25,6 +27,11 @@ int axis_up_press = 0;
 int axis_down_press = 0;
 int axis_left_press = 0;
 int axis_right_press = 0;
+
+int axis_x_direction = 0;
+int axis_y_direction = 0;
+
+pthread_t mouse_move_thread_t;
 
 typedef struct config {
   char *device;
@@ -102,16 +109,18 @@ Bool is_mouse_click_event(char *str)
 }
 
 
-void fake_mouse_movement(Display *disp, int xdirection, int ydirection)
-{
+void *mouse_move_thread(void * disp) {
   XEvent event;
-  /* Get the current pointer position */
-  XQueryPointer (disp, RootWindow (disp, 0), &event.xbutton.root,
-		 &event.xbutton.window, &event.xbutton.x_root,
-		 &event.xbutton.y_root, &event.xbutton.x, &event.xbutton.y,
-		 &event.xbutton.state);
-  XTestFakeMotionEvent (disp, 0, event.xbutton.x + xdirection, event.xbutton.y + ydirection, CurrentTime);
-  XFlush(disp);
+  while(axis_x_direction != 0 || axis_y_direction != 0) {
+    /* Get the current pointer position */
+    XQueryPointer (disp, RootWindow (disp, 0), &event.xbutton.root,
+         &event.xbutton.window, &event.xbutton.x_root,
+         &event.xbutton.y_root, &event.xbutton.x, &event.xbutton.y,
+         &event.xbutton.state);
+    XTestFakeMotionEvent (disp, 0, event.xbutton.x + axis_x_direction, event.xbutton.y + axis_y_direction, CurrentTime);
+    XFlush(disp);
+    usleep(6000);
+  }
 }
 
 //state: 'True' for press, 'False' for release
@@ -308,6 +317,9 @@ int main(int argc, char *argv[])
   size_t axis;
 
   KeyCode keycode = 0;
+  
+  //for mouse move thread.
+  XInitThreads();
   Display *disp = XOpenDisplay (NULL);
   config *conf = create_default_config();
 
@@ -384,7 +396,6 @@ int main(int argc, char *argv[])
 	case JS_EVENT_AXIS:
 	  axis = get_axis_state(&event, axes);
 	  if (axis < 3) {
-	    //printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y);
 	    if(!conf->axis_as_mouse) {
 	      if(axes[axis].x == 0 && axes[axis].y == -32767) //up
 		{
@@ -427,7 +438,13 @@ int main(int argc, char *argv[])
 		}
 			 		
 	    }else{	
-	      fake_mouse_movement(disp, (axes[axis].x/32767)*(1280/10), (axes[axis].y/32767)*(480/10));
+	      axis_x_direction = axes[axis].x/32767;
+              axis_y_direction = axes[axis].y/32767;
+	      //printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y);
+              if(axes[axis].x == 0 && axes[axis].y == 0) 
+                pthread_join(mouse_move_thread_t, NULL);
+	      else
+  	        pthread_create(&mouse_move_thread_t, NULL, mouse_move_thread, (void *)disp);
 	    }
 	  }
 	  break;
