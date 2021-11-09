@@ -86,13 +86,6 @@ void print_config(config *conf)
     printf("axis_right map to: %s\n", conf->axis_right);
 }
 
-Bool is_mouse_click_event(char *str)
-{
-    if(strstr(str, "mouse_click_"))
-        return True;
-    return False;
-}
-
 void *mouse_move_thread(void * disp) {
     XEvent event;
     while(axis_x_direction != 0 || axis_y_direction != 0) {
@@ -143,7 +136,7 @@ void fake_key_sequence(Display *disp, char *string, Bool state)
     }
 } 
 
-/* mouse_click_<n>: string+12 is 'n' */
+/* mouse_click_<n>: string + 12 is 'n' */
 void fake_mouse_click(Display *disp, char *string, Bool state)
 {
     if((strdup(string) + 12) != NULL) {
@@ -155,7 +148,7 @@ void fake_mouse_click(Display *disp, char *string, Bool state)
 
 void fake_event(Display *disp, char *string, Bool state)
 {
-    if(is_mouse_click_event(string))
+    if(strstr(string, "mouse_click_")
         fake_mouse_click(disp, string, state);
     else
         fake_key_sequence(disp, string, state);
@@ -268,7 +261,7 @@ void help()
     printf("  axis_down=Down\n");
     printf("  axis_left=Left\n");
     printf("  axis_right=Right\n\n");
-    printf("you can write your own config as '~/.enjoyrc'\n\n");
+    printf("you can create your own config as '~/.enjoyrc'\n\n");
     printf("Note:\n");
     printf("  * if 'axis_as_mouse' set to 1, axis_xx values will be ignored and used as mouse\n");
     printf("  * you can set up combined keys, such as 'Super_L+Shift_L+q'\n");
@@ -310,10 +303,11 @@ int main(int argc, char *argv[])
         char *key, *value;
 
         fp = fopen(config_file, "r");
-        /* it's ok, still have default configuratoin */
+        /* it's ok, still have default configuration */
         if (fp == NULL) {
             printf ("can not read config file \n");
         }
+
         while ((read = getline(&line, &len, fp)) != -1) {
             if (parse_line(line, &key, &value))
                 continue;
@@ -413,7 +407,6 @@ int main(int argc, char *argv[])
                                 axis_right_press = 0;
                             }
                         }
-
                     } else {	
                         axis_x_direction = axes[axis].x/32767;
                         axis_y_direction = axes[axis].y/32767;
@@ -421,8 +414,7 @@ int main(int argc, char *argv[])
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(mouse_move_thread_t, NULL);
                             thread_created = False;
-                        }
-                        else if(!thread_created) {
+                        } else if(!thread_created) {
                             pthread_create(&mouse_move_thread_t, NULL, mouse_move_thread, (void *)disp);
                             thread_created = True;
                         }
