@@ -5,7 +5,7 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
-The default configuration is:
+Since I am a heavy user of i3wm, the default configuration is:
 
 ```
 device=/dev/input/js0
@@ -45,7 +45,7 @@ If you need to map axis to key or mouse click event, please set:
 axis_as_mouse=0
 ```
 
-And map `axis_up/down/left/right` to which key or mouse click you need.
+And map `axis_up/down/left/right` to which key or mouse button you need.
 
 Finally, `enjoy`.
 
