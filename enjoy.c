@@ -102,7 +102,7 @@ void *mouse_move_thread(void * disp) {
         //seems not needed?
         //XFlush(disp);
         usleep(move_intervals);
-        move_intervals -= 3;
+        (move_intervals > 1000) ? move_intervals -= 200:move_intervals;
     }
 }
 
