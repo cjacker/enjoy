@@ -38,6 +38,8 @@ mouse_click_<n>
 n=1: left button
 n=2: middle button
 n=3: right button
+n=4: scroll up
+n=5: scroll down
 ```
 
 If you need to map axis to key or mouse click event, please set:

@@ -271,8 +271,9 @@ void help()
     printf("Note:\n");
     printf("  * if 'axis_as_mouse' set to 1, axis_xx values will be ignored and used as mouse\n");
     printf("  * you can set up combined keys, such as 'Super_L+Shift_L+q'\n");
-    printf("  * if you want to set it as mouse click event, use 'mouse_click_[1,2,3]'\n");
+    printf("  * if you want to set it as mouse click/scroll event, use 'mouse_click_[1,2,3,4,5]'\n");
     printf("    - 1:left button, 2:middle button, 3:right button.\n");
+    printf("    - 4:scroll up, 5:scroll down\n");
 }
 
 
