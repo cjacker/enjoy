@@ -83,8 +83,7 @@ void *motion_thread(void * disp) {
                 &event.xbutton.y_root, &event.xbutton.x, &event.xbutton.y,
                 &event.xbutton.state);
         XTestFakeMotionEvent (disp, 0, event.xbutton.x + axis_x_direction, event.xbutton.y + axis_y_direction, CurrentTime);
-        //seems not needed?
-        //XFlush(disp);
+        XFlush(disp);
         /* motion acceleration */
         usleep((motion_intervals > 1000) ? motion_intervals -= 200 : motion_intervals);
     }
