@@ -33,7 +33,7 @@ int axis_y_direction = 0;
 
 #define MOTION_INTERVAL_INIT 8000
 /* mouse motion intervals */
-int motion_intervals = MOTION_INTERVAL_INIT;
+int motion_interval = MOTION_INTERVAL_INIT;
 
 Bool motion_thread_created = False;
 
@@ -75,18 +75,14 @@ config *create_default_config()
 }
 
 void *motion_thread(void * disp) {
-    XEvent event;
+    XTestGrabControl(disp, True);
     while(axis_x_direction != 0 || axis_y_direction != 0) {
-        /* Get the current pointer position */
-        XQueryPointer (disp, RootWindow (disp, 0), &event.xbutton.root,
-                &event.xbutton.window, &event.xbutton.x_root,
-                &event.xbutton.y_root, &event.xbutton.x, &event.xbutton.y,
-                &event.xbutton.state);
-        XTestFakeMotionEvent (disp, 0, event.xbutton.x + axis_x_direction, event.xbutton.y + axis_y_direction, CurrentTime);
+        XTestFakeRelativeMotionEvent(disp, axis_x_direction, axis_y_direction, CurrentTime);
         XFlush(disp);
         /* motion acceleration */
-        usleep((motion_intervals > 1000) ? motion_intervals -= 200 : motion_intervals);
+        usleep((motion_interval > 1000) ? motion_interval -= 200 : motion_interval);
     }
+    XTestGrabControl(disp, False);
 }
 
 /* state: 'True' for press, 'False' for release */
@@ -374,9 +370,9 @@ int main(int argc, char *argv[])
                 }
             case JS_EVENT_AXIS:
                 axis = get_axis_state(&event, axes);
-		//buttons will generate AXIS event too, ignore it.
-		if(axes[axis].x == 1 || axes[axis].y == 1)
-			break; 
+                //buttons will generate AXIS event too, ignore it.
+                if(axes[axis].x == 1 || axes[axis].y == 1)
+                    break; 
                 if (axis < 3) {
                     if(!conf->axis_as_mouse) {
                         if(axes[axis].x == 0 && axes[axis].y == -32767) /* up */
@@ -418,7 +414,7 @@ int main(int argc, char *argv[])
                                 axis_right_press = 0;
                             }
                         }
-                    } else {	
+                    } else {
                         axis_x_direction = axes[axis].x/32767;
                         axis_y_direction = axes[axis].y/32767;
                         /* printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y); */
@@ -426,7 +422,7 @@ int main(int argc, char *argv[])
                             pthread_join(motion_thread_t, NULL);
                             motion_thread_created = False;
                             /* restore move intervals.*/
-                            motion_intervals = MOTION_INTERVAL_INIT;
+                            motion_interval = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
                             pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
                             motion_thread_created = True;
