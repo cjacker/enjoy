@@ -31,8 +31,9 @@ int axis_right_press = 0;
 int axis_x_direction = 0;
 int axis_y_direction = 0;
 
+#define MOTION_INTERVAL_INIT 8000
 /* mouse motion intervals */
-int motion_intervals = 6000;
+int motion_intervals = MOTION_INTERVAL_INIT;
 
 Bool motion_thread_created = False;
 
@@ -85,7 +86,7 @@ void *motion_thread(void * disp) {
         //seems not needed?
         //XFlush(disp);
         /* motion acceleration */
-        usleep((motion_intervals > 1000) ? motion_intervals -= 200:motion_intervals);
+        usleep((motion_intervals > 1000) ? motion_intervals -= 200 : motion_intervals);
     }
 }
 
@@ -423,7 +424,7 @@ int main(int argc, char *argv[])
                             pthread_join(motion_thread_t, NULL);
                             motion_thread_created = False;
                             /* restore move intervals.*/
-                            motion_intervals = 6000;
+                            motion_intervals = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
                             pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
                             motion_thread_created = True;
