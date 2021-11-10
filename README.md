@@ -1,11 +1,11 @@
 # enjoy
 ## convert joystick events to mouse/key events
 
-Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/motion and key events.
+Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion and key events.
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
-Since I am a heavy user of i3wm, the default configuration is:
+Since I am a heavy user of i3wm, the default configuration set to:
 
 ```
 device=/dev/input/js0
@@ -32,7 +32,7 @@ It support map combined keys, for example:
 button_a=Super_L+Shift_L+q
 ```
 
-If you need to map to mouse click event, please use:
+If you need to map to mouse click/scroll event, please use:
 ```
 mouse_click_<n>
 n=1: left button
