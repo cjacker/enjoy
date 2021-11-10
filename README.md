@@ -7,7 +7,7 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 ## Build
 
-`enjoy` almost had no dependencies but use libx11 and libxtst to simulate mouse/key events:
+`enjoy` almost have no dependencies but use libx11 and libxtst to simulate mouse/key events:
 ```
 sudo apt-get install libx11-dev libxtst-dev
 make
