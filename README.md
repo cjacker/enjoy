@@ -1,7 +1,7 @@
 # enjoy
 ## convert joystick events to mouse/key events
 
-Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion and key events.
+Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion and key events. It should work with other joysticks but not tested.
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
