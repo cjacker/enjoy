@@ -9,8 +9,8 @@ Since I am a heavy user of i3wm, the default configuration set to:
 
 ```
 device=/dev/input/js0
-button_a=mouse_click_1
-button_b=mouse_click_3
+button_a=mouse_click_3
+button_b=mouse_click_1
 button_x=Super_L
 button_y=Control_L
 button_select=Super_L+End

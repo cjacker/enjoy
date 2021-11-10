@@ -60,8 +60,8 @@ config *create_default_config()
     config *p = malloc(sizeof(struct config));
     p->device = "/dev/input/js0";
     p->axis_as_mouse = 1;
-    p->button_a = "mouse_click_1";
-    p->button_b = "mouse_click_3";
+    p->button_a = "mouse_click_3";
+    p->button_b = "mouse_click_1";
     p->button_x = "Super_L";
     p->button_y = "Control_L";
     p->button_select = "Super_L+End";
@@ -256,8 +256,8 @@ void help()
     printf("enjoy - read joystick events and convert to mouse/key event\n\n");
     printf("the default config is:\n");
     printf("  device=/dev/input/js0\n");
-    printf("  button_a=mouse_click_1\n");
-    printf("  button_b=mouse_click_3\n");
+    printf("  button_a=mouse_click_3\n");
+    printf("  button_b=mouse_click_1\n");
     printf("  button_x=Control_L\n");
     printf("  button_y=Shift_L\n");
     printf("  button_select=Super_L+End\n");
