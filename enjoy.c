@@ -31,7 +31,11 @@ int axis_right_press = 0;
 int axis_x_direction = 0;
 int axis_y_direction = 0;
 
-Bool thread_created = True;
+
+int move_intervals = 6000;
+
+Bool thread_created = False;
+
 pthread_t mouse_move_thread_t;
 
 /* structure to store configurations */
@@ -97,7 +101,8 @@ void *mouse_move_thread(void * disp) {
         XTestFakeMotionEvent (disp, 0, event.xbutton.x + axis_x_direction, event.xbutton.y + axis_y_direction, CurrentTime);
         //seems not needed?
         //XFlush(disp);
-        usleep(6000);
+        usleep(move_intervals);
+        move_intervals -= 3;
     }
 }
 
@@ -148,7 +153,7 @@ void fake_mouse_click(Display *disp, char *string, Bool state)
 
 void fake_event(Display *disp, char *string, Bool state)
 {
-    if(strstr(string, "mouse_click_")
+    if(strstr(string, "mouse_click_"))
         fake_mouse_click(disp, string, state);
     else
         fake_key_sequence(disp, string, state);
@@ -414,6 +419,8 @@ int main(int argc, char *argv[])
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(mouse_move_thread_t, NULL);
                             thread_created = False;
+                            //restore move intervals.
+                            move_intervals = 6000;
                         } else if(!thread_created) {
                             pthread_create(&mouse_move_thread_t, NULL, mouse_move_thread, (void *)disp);
                             thread_created = True;
