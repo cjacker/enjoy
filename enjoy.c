@@ -375,6 +375,9 @@ int main(int argc, char *argv[])
                 }
             case JS_EVENT_AXIS:
                 axis = get_axis_state(&event, axes);
+		//buttons will generate AXIS event too, ignore it.
+		if(axes[axis].x == 1 || axes[axis].y == 1)
+			break; 
                 if (axis < 3) {
                     if(!conf->axis_as_mouse) {
                         if(axes[axis].x == 0 && axes[axis].y == -32767) /* up */
@@ -417,8 +420,8 @@ int main(int argc, char *argv[])
                             }
                         }
                     } else {	
-                        axis_x_direction = axes[axis].x/abs(axes[axis].x);
-                        axis_y_direction = axes[axis].y/abs(axes[axis].y);
+                        axis_x_direction = axes[axis].x/32767;
+                        axis_y_direction = axes[axis].y/32767;
                         /* printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y); */
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(motion_thread_t, NULL);
