@@ -1,8 +1,8 @@
 /*
-Author: Cjacker
+Author: Cjacker <cjacker@foxmail.com>
 
 Description:
-Read joystick events and convert it to mouse or key event.
+Convert joystick events to mouse or key events.
 
 Compile:
 gcc -Os enjoy.c -o enjoy
@@ -32,11 +32,11 @@ int axis_x_direction = 0;
 int axis_y_direction = 0;
 
 /* mouse motion intervals */
-int move_intervals = 6000;
+int motion_intervals = 6000;
 
-Bool thread_created = False;
+Bool motion_thread_created = False;
 
-pthread_t mouse_move_thread_t;
+pthread_t motion_thread_t;
 
 /* structure to store configurations */
 typedef struct config {
@@ -73,7 +73,7 @@ config *create_default_config()
     return p;
 }
 
-void *mouse_move_thread(void * disp) {
+void *motion_thread(void * disp) {
     XEvent event;
     while(axis_x_direction != 0 || axis_y_direction != 0) {
         /* Get the current pointer position */
@@ -84,9 +84,8 @@ void *mouse_move_thread(void * disp) {
         XTestFakeMotionEvent (disp, 0, event.xbutton.x + axis_x_direction, event.xbutton.y + axis_y_direction, CurrentTime);
         //seems not needed?
         //XFlush(disp);
-        usleep(move_intervals);
         /* motion acceleration */
-        (move_intervals > 1000) ? move_intervals -= 200:move_intervals;
+        usleep((motion_intervals > 1000) ? motion_intervals -= 200:motion_intervals);
     }
 }
 
@@ -128,11 +127,14 @@ void fake_key_sequence(Display *disp, char *string, Bool state)
 /* mouse_click_<n>: string + 12 is 'n' */
 void fake_mouse_click(Display *disp, char *string, Bool state)
 {
-    if((strdup(string) + 12) != NULL) {
+    char *bn = strdup(string) + 12;
+    //use strstr to check bn is a number.
+    if(bn != NULL && strstr("0123456789", bn)) {
         /* Fake the mouse button Press and Release events */
-        XTestFakeButtonEvent (disp, atoi(strdup(string) + 12), state,  CurrentTime);
+        XTestFakeButtonEvent (disp, atoi(bn), state,  CurrentTime);
         XFlush(disp);
-    }
+    } else
+        fprintf(stderr, "Error mouse_clickformat: %s\n", string);
 }
 
 void fake_event(Display *disp, char *string, Bool state)
@@ -152,7 +154,6 @@ int read_event(int fd, struct js_event *event)
 
     if (bytes == sizeof(*event))
         return 0;
-
     /* Error, could not read full event. */
     return -1;
 }
@@ -172,7 +173,6 @@ size_t get_button_count(int fd)
     __u8 buttons;
     if (ioctl(fd, JSIOCGBUTTONS, &buttons) == -1)
         return 0;
-
     return buttons;
 }
 
@@ -273,7 +273,7 @@ void help(config *default_config)
 void load_user_config(config *conf)
 {
     char config_file[64];
-    sprintf(config_file,"%s/.enjoyrc", getenv("HOME"));
+    sprintf(config_file, "%s/.enjoyrc", getenv("HOME"));
 
     if(access(config_file, R_OK) == 0) {
         FILE *fp;
@@ -283,12 +283,12 @@ void load_user_config(config *conf)
         char *key, *value;
 
         fp = fopen(config_file, "r");
-        /* it's ok, still have default configuration */
-        /* never fail. 
+        /* ok, still have default configurations */
         if (fp == NULL) {
             printf ("can not read config file \n");
+            return;
         }
-        */
+
         while ((read = getline(&line, &len, fp)) != -1) {
             /* ignore line start with # */
             if (strncmp(line, "#", strlen(line)) == 0)
@@ -346,9 +346,9 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    //load user configuration
+    /* load user configuration */
     load_user_config(conf);
-    //print_config(conf);
+    /* print_config(conf); */
 
     device = conf->device;
     js = open(device, O_RDONLY);
@@ -416,17 +416,17 @@ int main(int argc, char *argv[])
                             }
                         }
                     } else {	
-                        axis_x_direction = axes[axis].x/32767;
-                        axis_y_direction = axes[axis].y/32767;
-                        //printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y);
+                        axis_x_direction = axes[axis].x/abs(axes[axis].x);
+                        axis_y_direction = axes[axis].y/abs(axes[axis].y);
+                        /* printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y); */
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
-                            pthread_join(mouse_move_thread_t, NULL);
-                            thread_created = False;
-                            //restore move intervals.
-                            move_intervals = 6000;
-                        } else if(!thread_created) {
-                            pthread_create(&mouse_move_thread_t, NULL, mouse_move_thread, (void *)disp);
-                            thread_created = True;
+                            pthread_join(motion_thread_t, NULL);
+                            motion_thread_created = False;
+                            /* restore move intervals.*/
+                            motion_intervals = 6000;
+                        } else if(!motion_thread_created) {
+                            pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
+                            motion_thread_created = True;
                         }
                     }
                 }
