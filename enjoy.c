@@ -31,7 +31,7 @@ int axis_right_press = 0;
 int axis_x_direction = 0;
 int axis_y_direction = 0;
 
-
+/* mouse motion intervals */
 int move_intervals = 6000;
 
 Bool thread_created = False;
@@ -102,6 +102,7 @@ void *mouse_move_thread(void * disp) {
         //seems not needed?
         //XFlush(disp);
         usleep(move_intervals);
+        /* motion acceleration */
         (move_intervals > 1000) ? move_intervals -= 200:move_intervals;
     }
 }
