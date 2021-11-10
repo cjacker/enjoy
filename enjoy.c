@@ -73,23 +73,6 @@ config *create_default_config()
     return p;
 }
 
-/* print out config */
-void print_config(config *conf)
-{
-    printf("joystick device: %s\n", conf->device);
-    printf("button_a map to: %s\n", conf->button_a);
-    printf("button_b map to: %s\n", conf->button_b);
-    printf("button_x map to: %s\n", conf->button_x);
-    printf("button_y map to: %s\n", conf->button_y);
-    printf("button_select map to: %s\n", conf->button_select);
-    printf("button_start map to: %s\n", conf->button_start);
-    printf("axis as mouse: %d\n", conf->axis_as_mouse);
-    printf("axis_up map to: %s\n", conf->axis_up);
-    printf("axis_down map to: %s\n", conf->axis_down);
-    printf("axis_left map to: %s\n", conf->axis_left);
-    printf("axis_right map to: %s\n", conf->axis_right);
-}
-
 void *mouse_move_thread(void * disp) {
     XEvent event;
     while(axis_x_direction != 0 || axis_y_direction != 0) {
@@ -250,59 +233,49 @@ int parse_line(char *line, char **key, char **value)
     return 0;
 }
 
-/* show help infomation */
-void help()
+/* print out config */
+void print_config(config *conf)
 {
-    printf("enjoy - read joystick events and convert to mouse/key event\n\n");
-    printf("the default config is:\n");
-    printf("  device=/dev/input/js0\n");
-    printf("  button_a=mouse_click_3\n");
-    printf("  button_b=mouse_click_1\n");
-    printf("  button_x=Control_L\n");
-    printf("  button_y=Shift_L\n");
-    printf("  button_select=Super_L+End\n");
-    printf("  button_start=Super_L+d\n");
-    printf("  axis_as_mouse=1\n");
-    printf("  axis_up=Up\n");
-    printf("  axis_down=Down\n");
-    printf("  axis_left=Left\n");
-    printf("  axis_right=Right\n\n");
-    printf("you can create your own config as '~/.enjoyrc'\n\n");
-    printf("Note:\n");
-    printf("  * if 'axis_as_mouse' set to 1, axis_xx values will be ignored and used as mouse\n");
-    printf("  * you can set up combined keys, such as 'Super_L+Shift_L+q'\n");
-    printf("  * if you want to set it as mouse click/scroll event, use 'mouse_click_[1,2,3,4,5]'\n");
-    printf("    - 1:left button, 2:middle button, 3:right button.\n");
-    printf("    - 4:scroll up, 5:scroll down\n");
+    printf("device=%s\n", conf->device);
+    printf("button_a=%s\n", conf->button_a);
+    printf("button_b=%s\n", conf->button_b);
+    printf("button_x=%s\n", conf->button_x);
+    printf("button_y=%s\n", conf->button_y);
+    printf("button_select=%s\n", conf->button_select);
+    printf("button_start=%s\n", conf->button_start);
+    printf("axis_as_mouse=%d\n", conf->axis_as_mouse);
+    printf("axis_up=%s\n", conf->axis_up);
+    printf("axis_down=%s\n", conf->axis_down);
+    printf("axis_left=%s\n", conf->axis_left);
+    printf("axis_right=%s\n", conf->axis_right);
 }
 
 
-int main(int argc, char *argv[])
+/* show help infomation */
+void help(config *default_config)
 {
-    if(argc > 1 && !strcmp(argv[1], "-h")){
-        help();
-        exit(0);
-    }
+    printf("enjoy - Read joystick events and convert to mouse/key event\n");
+    printf("        By cjacker <cjacker@foxmail.com>\n\n");
+    printf("the default config set to:\n\n");
+    print_config(default_config);
+    printf("\nyou can create your own config as '~/.enjoyrc'\n\n");
+    printf("Note:\n");
+    printf("  * Set 'axis_as_mouse' to 1 to ignore axis_up/down/left/right settings and use axis as mouse.\n");
+    printf("  * Set combined keys with '+', such as 'Super_L+Shift_L+q'.\n");
+    printf("  * Set mouse click/scroll event with 'mouse_click_[1,2,3,4,5]'\n");
+    printf("    - 1 : left button\n");
+    printf("    - 2 : middle button\n");
+    printf("    - 3 : right button\n");
+    printf("    - 4 : scroll up\n");
+    printf("    - 5 : scroll down\n");
+}
 
-    const char *device;
-
-    int js;
-    struct js_event event;
-    struct axis_state axes[3] = {0};
-    size_t axis;
-
-    KeyCode keycode = 0;
-
-    /* for mouse move thread. */
-    XInitThreads();
-
-    Display *disp = XOpenDisplay (NULL);
-    config *conf = create_default_config();
-
+void load_user_config(config *conf)
+{
     char config_file[64];
     sprintf(config_file,"%s/.enjoyrc", getenv("HOME"));
 
-    if(access(config_file, F_OK) == 0) {
+    if(access(config_file, R_OK) == 0) {
         FILE *fp;
         char *line = NULL;
         size_t len = 0;
@@ -311,11 +284,15 @@ int main(int argc, char *argv[])
 
         fp = fopen(config_file, "r");
         /* it's ok, still have default configuration */
+        /* never fail. 
         if (fp == NULL) {
             printf ("can not read config file \n");
         }
-
+        */
         while ((read = getline(&line, &len, fp)) != -1) {
+            /* ignore line start with # */
+            if (strncmp(line, "#", strlen(line)) == 0)
+                continue;
             if (parse_line(line, &key, &value))
                 continue;
             if (strcmp(key, "device") == 0)
@@ -346,7 +323,31 @@ int main(int argc, char *argv[])
         free(line);
         fclose(fp);
     }
+}
 
+int main(int argc, char *argv[])
+{
+    const char *device;
+    int js;
+    struct js_event event;
+    struct axis_state axes[3] = {0};
+    size_t axis;
+
+    KeyCode keycode = 0;
+
+    /* for mouse move thread. */
+    XInitThreads();
+
+    Display *disp = XOpenDisplay (NULL);
+    config *conf = create_default_config();
+
+    if(argc > 1 && !strcmp(argv[1], "-h")){
+        help(conf);
+        exit(0);
+    }
+
+    //load user configuration
+    load_user_config(conf);
     //print_config(conf);
 
     device = conf->device;
