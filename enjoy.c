@@ -142,7 +142,6 @@ void fake_event(Display *disp, char *string, Bool state)
         return;
 
     if(strncasecmp (string, "exec ", 5) != 0) {
-    
         return;    
     }
 
