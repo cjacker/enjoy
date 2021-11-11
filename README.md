@@ -19,7 +19,7 @@ make
 
 Since I am a heavy user of i3wm, the default configuration set to:
 
-```
+```ini
 #joystick device
 device=/dev/input/js0
 # button x
@@ -34,7 +34,7 @@ button_3=Control_L
 button_8=Super_L+End
 # button start
 button_9=Super_L+d
-# axis simulate mouse mition
+# axis simulate mouse mition, set it to 0 if you want to simulate key/mouse click event.
 axis_as_mouse=1
 axis_up=Up
 axis_down=Down
