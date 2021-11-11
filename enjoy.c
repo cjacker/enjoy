@@ -253,7 +253,7 @@ void help(struct cfg_struct *cfg)
 void load_user_cfg(struct cfg_struct *cfg)
 {
     char config_file[64];
-    sprintf(config_file, "%s/./config/enjoyrc", getenv("HOME"));
+    sprintf(config_file, "%s/.config/enjoyrc", getenv("HOME"));
 
     if(access(config_file, R_OK) == 0) {
         cfg_load(cfg, config_file);
