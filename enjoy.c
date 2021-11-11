@@ -23,6 +23,11 @@ Run:
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 
+#include "cfg_parse.h"
+
+/* global config */
+struct cfg_struct *cfg;
+
 int axis_up_press = 0;
 int axis_down_press = 0;
 int axis_left_press = 0;
@@ -31,56 +36,12 @@ int axis_right_press = 0;
 int axis_x_direction = 0;
 int axis_y_direction = 0;
 
+/* motion interval init value */
 #define MOTION_INTERVAL_INIT 8000
-/* mouse motion intervals */
 int motion_interval = MOTION_INTERVAL_INIT;
 
 Bool motion_thread_created = False;
-
 pthread_t motion_thread_t;
-
-/* structure to store configurations */
-typedef struct config {
-    char *device;
-    int axis_as_mouse;
-    char *button_0;
-    char *button_1;
-    char *button_2;
-    char *button_3;
-    char *button_4;
-    char *button_5;
-    char *button_6;
-    char *button_7;
-    char *button_8;
-    char *button_9;
-    char *axis_up;
-    char *axis_down;
-    char *axis_left;
-    char *axis_right;
-} config;
-
-/* default configuration */
-config *create_default_config()
-{
-    config *p = malloc(sizeof(struct config));
-    p->device = "/dev/input/js0";
-    p->axis_as_mouse = 1;
-    p->button_0 = "Super_L";
-    p->button_1 = "mouse_button_3";
-    p->button_2 = "mouse_button_1";
-    p->button_3 = "Control_L";
-    p->button_4 = NULL;
-    p->button_5 = NULL;
-    p->button_6 = NULL;
-    p->button_7 = NULL;
-    p->button_8 = "Super_L+End";
-    p->button_9 = "Super_L+d";
-    p->axis_up = "Up";
-    p->axis_down = "Down";
-    p->axis_left = "Left";
-    p->axis_right = "Right";
-    return p;
-}
 
 void *motion_thread(void * disp) {
     XTestGrabControl(disp, True);
@@ -117,10 +78,10 @@ KeyCode str2key(Display *disp, char *keystr)
 }
 
 /* process combined key */
-void fake_key_sequence(Display *disp, char *string, Bool state)
+void fake_key_sequence(Display *disp, char *value, Bool state)
 {
-    char * token = strtok(strdup(string), "+");
-    // loop through the string to extract all other tokens
+    char * token = strtok(strdup(value), "+");
+    // loop through the value to extract all other tokens
     while( token != NULL ) {
         //printf( " %s\n", token ); //printing each token
         fake_key(disp, str2key(disp, token), state);
@@ -135,22 +96,60 @@ void fake_mouse_button(Display *disp, int button, Bool state)
      XFlush(disp);
 }
 
-/* mouse_button_<n>: string + 13 is 'n' */
-void fake_event(Display *disp, char *string, Bool state)
+/* if button_n = -1, it's axis event */
+/* if button_n != -1, ignore x and y */
+void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
 {
-    if(string == NULL || strlen(string) == 0)
-        return;
+    //query button_n value from cfg;
+    char *key = malloc(16);
+    if(button_n == -1) {
+        /* up and down */
+        if(x == 0) {
+            if (y == -32767) {
+                axis_up_press = state;
+                sprintf(key, "axis_up");            
+            }
+            if (y == 32767) {
+                axis_down_press = state;
+                sprintf(key, "axis_down");            
+            }
+        } 
+        if(y == 0) {
+            if (x == -32767) {
+                axis_left_press = state;
+                sprintf(key, "axis_left");            
+            }
+            if (x == 32767) {
+                axis_right_press = state;
+                sprintf(key, "axis_right");            
+            }
+        } 
+    } else {
+        sprintf(key, "button_%d",button_n); 
+    }
+   
+    char *value = (char *)cfg_get(cfg, key);
 
-    if(strncasecmp (string, "exec ", 5) != 0) {
+    if(value == NULL) {
+        fprintf(stderr, "%s not set\n", key);
+        return;
+    }
+
+    //TODO, exec    
+    if(strncasecmp (value, "exec ", 5) != 0) {
+        fprintf(stderr, "exec is not supported now.\n");
         return;    
     }
 
-    if(strstr(string, "mouse_button_")) {
-        string += 13;
-        if(strstr("0123456789", string)) /* make sure it is a 'number' */
-            fake_mouse_button(disp, atoi(string), state);
+    /* mouse_button_<n>: value + 13 is 'n' */
+    if(strncasecmp (value, "mouse_button_", 5) != 0) {
+        value += 13;
+        if(strstr("0123456789", value)) /* make sure it is a 'number' */
+            fake_mouse_button(disp, atoi(value), state);
     } else
-        fake_key_sequence(disp, string, state);
+        fake_key_sequence(disp, value, state);
+
+    free(key);
 }
 
 /* read joystick event, 0 success, -1 failed */
@@ -209,69 +208,37 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
 }
 
 
-/* helper func for parse config file */
-char *trim(char *str)
-{
-    char *start = str;
-    char *end = str + strlen(str);
-
-    while(*start && isspace(*start))
-        start++;
-
-    while(end > start && isspace(*(end - 1)))
-        end--;
-
-    *end = '\0';
-    return start;
-}
-
-/* helper func for parse config file */
-int parse_line(char *line, char **key, char **value)
-{
-    char *ptr = strchr(line, '=');
-    if (ptr == NULL)
-        return -1;
-
-    *ptr++ = '\0';
-    *key = trim(line);
-    *value = trim(ptr);
-
-    return 0;
-}
-
 /* print out config */
-void print_config(config *conf)
+void print_cfg(struct cfg_struct *cfg)
 {
-    printf("device=%s\n", conf->device);
-    printf("button_0=%s\n", conf->button_0?conf->button_0:"");
-    printf("button_1=%s\n", conf->button_1?conf->button_1:"");
-    printf("button_2=%s\n", conf->button_2?conf->button_2:"");
-    printf("button_3=%s\n", conf->button_3?conf->button_3:"");
-    printf("button_4=%s\n", conf->button_4?conf->button_4:"");
-    printf("button_5=%s\n", conf->button_5?conf->button_5:"");
-    printf("button_6=%s\n", conf->button_6?conf->button_6:"");
-    printf("button_7=%s\n", conf->button_7?conf->button_7:"");
-    printf("button_8=%s\n", conf->button_8?conf->button_8:"");
-    printf("button_9=%s\n", conf->button_9?conf->button_9:"");
-    printf("axis_as_mouse=%d\n", conf->axis_as_mouse);
-    printf("axis_up=%s\n", conf->axis_up);
-    printf("axis_down=%s\n", conf->axis_down);
-    printf("axis_left=%s\n", conf->axis_left);
-    printf("axis_right=%s\n", conf->axis_right);
+    printf("device=%s\n", cfg_get(cfg, "device"));
+    printf("button_0=%s\n", cfg_get(cfg, "button_0"));
+    printf("button_1=%s\n", cfg_get(cfg, "button_1"));
+    printf("button_2=%s\n", cfg_get(cfg, "button_2"));
+    printf("button_3=%s\n", cfg_get(cfg, "button_3"));
+    printf("button_8=%s\n", cfg_get(cfg, "button_8"));
+    printf("button_9=%s\n", cfg_get(cfg, "button_9"));
+    printf("axis_as_mouse=%d\n", atoi(cfg_get(cfg, "axis_as_mouse")));
+    printf("axis_up=%s\n", cfg_get(cfg, "axis_up"));
+    printf("axis_down=%s\n", cfg_get(cfg, "axis_down"));
+    printf("axis_left=%s\n", cfg_get(cfg, "axis_left"));
+    printf("axis_right=%s\n", cfg_get(cfg, "axis_right"));
 }
 
 
 /* show help infomation */
-void help(config *default_config)
+void help(struct cfg_struct *cfg)
 {
     printf("enjoy - Read joystick events and convert to mouse/key event\n");
     printf("        By cjacker <cjacker@foxmail.com>\n\n");
     printf("the default config set to:\n\n");
-    print_config(default_config);
+
+    print_cfg(cfg);
+
     printf("\n");
     printf("For devterm: x is button_0, a is button_1, b is button_2, y is button_3,\n");
     printf("             select is button_8, start is button_9\n");
-    printf("\nyou can create your own config as '~/.enjoyrc'\n\n");
+    printf("\nyou can create your own config as '~/.config/enjoyrc'\n\n");
     printf("Note:\n");
     printf("  * Set 'axis_as_mouse' to 1 to ignore axis_up/down/left/right settings and use axis as mouse.\n");
     printf("  * Set combined keys with '+', such as 'Super_L+Shift_L+q'.\n");
@@ -283,67 +250,30 @@ void help(config *default_config)
     printf("    - 5 : scroll down\n");
 }
 
-void load_user_config(config *conf)
+void load_user_cfg(struct cfg_struct *cfg)
 {
     char config_file[64];
-    sprintf(config_file, "%s/.enjoyrc", getenv("HOME"));
+    sprintf(config_file, "%s/./config/enjoyrc", getenv("HOME"));
 
     if(access(config_file, R_OK) == 0) {
-        FILE *fp;
-        char *line = NULL;
-        size_t len = 0;
-        ssize_t read;
-        char *key, *value;
-
-        fp = fopen(config_file, "r");
-        /* ok, still have default configurations */
-        if (fp == NULL) {
-            printf ("can not read config file \n");
-            return;
-        }
-
-        while ((read = getline(&line, &len, fp)) != -1) {
-            /* ignore line start with # */
-            if (strncmp(line, "#", strlen(line)) == 0)
-                continue;
-            if (parse_line(line, &key, &value))
-                continue;
-            if (strcmp(key, "device") == 0)
-                conf->device=strdup(value);
-            else if (strcmp(key, "button_0") == 0)
-                conf->button_0=strdup(value);
-            else if (strcmp(key, "button_1") == 0)
-                conf->button_1=strdup(value);
-            else if (strcmp(key, "button_2") == 0)
-                conf->button_2=strdup(value);
-            else if (strcmp(key, "button_3") == 0)
-                conf->button_3=strdup(value);
-            else if (strcmp(key, "button_4") == 0)
-                conf->button_4=strdup(value);
-            else if (strcmp(key, "button_5") == 0)
-                conf->button_5=strdup(value);
-            else if (strcmp(key, "button_6") == 0)
-                conf->button_6=strdup(value);
-            else if (strcmp(key, "button_7") == 0)
-                conf->button_7=strdup(value);
-            else if (strcmp(key, "button_8") == 0)
-                conf->button_8=strdup(value);
-            else if (strcmp(key, "button_9") == 0)
-                conf->button_9=strdup(value);
-            else if (strcmp(key, "axis_up") == 0)
-                conf->axis_up=strdup(value);
-            else if (strcmp(key, "axis_down") == 0)
-                conf->axis_down=strdup(value);
-            else if (strcmp(key, "axis_left") == 0)
-                conf->axis_left=strdup(value);
-            else if (strcmp(key, "axis_right") == 0)
-                conf->axis_right=strdup(value);
-            else if (strcmp(key, "axis_as_mouse") == 0)
-                conf->axis_as_mouse=atoi(strdup(value));
-        }
-        free(line);
-        fclose(fp);
+        cfg_load(cfg, config_file);
     }
+}
+
+void init_default_cfg(struct cfg_struct *cfg)
+{
+   cfg_set(cfg, "device", "/dev/input/js0");
+   cfg_set(cfg, "axis_as_mouse", "1");
+   cfg_set(cfg, "button_0", "Super_L");
+   cfg_set(cfg, "button_1", "mouse_button_3");
+   cfg_set(cfg, "button_2", "mouse_button_1");
+   cfg_set(cfg, "button_3", "Control_L");
+   cfg_set(cfg, "button_8", "Super_L+End");
+   cfg_set(cfg, "button_9", "Super_L+d");
+   cfg_set(cfg, "axis_up", "Up");
+   cfg_set(cfg, "axis_down", "Down");
+   cfg_set(cfg, "axis_left", "Left");
+   cfg_set(cfg, "axis_right", "Right");
 }
 
 int main(int argc, char *argv[])
@@ -360,18 +290,21 @@ int main(int argc, char *argv[])
     XInitThreads();
 
     Display *disp = XOpenDisplay (NULL);
-    config *conf = create_default_config();
+
+    //init config file;
+    cfg = cfg_init();
+    init_default_cfg(cfg);
 
     if(argc > 1 && !strcmp(argv[1], "-h")){
-        help(conf);
+        help(cfg);
         exit(0);
     }
 
     /* load user configuration */
-    load_user_config(conf);
-    /* print_config(conf); */
+    load_user_cfg(cfg);
 
-    device = conf->device;
+    device = cfg_get(cfg, "device");
+
     js = open(device, O_RDONLY);
 
     if (js == -1)
@@ -383,70 +316,33 @@ int main(int argc, char *argv[])
         switch (event.type)
         {
             case JS_EVENT_BUTTON:
-                switch(event.number)
-                {
-                    case 0: fake_event(disp, conf->button_0, event.value); break;
-                    case 1: fake_event(disp, conf->button_1, event.value); break;
-                    case 2: fake_event(disp, conf->button_2, event.value); break;
-                    case 3: fake_event(disp, conf->button_3, event.value); break;
-                    case 4: fake_event(disp, conf->button_4, event.value); break;
-                    case 5: fake_event(disp, conf->button_5, event.value); break;
-                    case 6: fake_event(disp, conf->button_6, event.value); break;
-                    case 7: fake_event(disp, conf->button_7, event.value); break;
-                    case 8: fake_event(disp, conf->button_8, event.value); break;
-                    case 9: fake_event(disp, conf->button_9, event.value); break;
-                    default: break;
-                }
+                fake_button_event(disp, 0, 0, event.number, event.value);
+                break;
             case JS_EVENT_AXIS:
                 axis = get_axis_state(&event, axes);
-                //buttons will generate AXIS event too, ignore it.
-                if(axes[axis].x == 1 || axes[axis].y == 1)
-                    break; 
                 if (axis < 3) {
-                    if(!conf->axis_as_mouse) {
-                        if(axes[axis].x == 0 && axes[axis].y == -32767) /* up */
+                    /* buttons will generate AXIS event too, ignore it. */
+                    if(abs(axes[axis].x) == 1 || abs(axes[axis].y) == 1)
+                        break;
+ 
+                    if(!(atoi(cfg_get(cfg, "axis_as_mouse")))) {
+                        if(axes[axis].x != 0 || axes[axis].y != 0)
+                            fake_button_event(disp, axes[axis].x, axes[axis].y, -1, 1);
+                        if(axes[axis].x == 0 && axes[axis].y == 0) /* release */
                         {
-                            axis_up_press = 1;
-                            fake_event(disp, conf->axis_up, 1);
-                        }
-                        if(axes[axis].x == 0 && axes[axis].y == 32767) /* down */
-                        {
-                            axis_down_press = 1;
-                            fake_event(disp, conf->axis_down, 1);
-                        }
-                        if(axes[axis].x == -32767 && axes[axis].y == 0) /* left */
-                        {
-                            axis_left_press = 1;
-                            fake_event(disp, conf->axis_left, 1);
-                        }
-                        if(axes[axis].x == 32767 && axes[axis].y == 0) /* right */
-                        {
-                            axis_right_press = 1;
-                            fake_event(disp, conf->axis_right, 1);
-                        }
-                        if(axes[axis].x == 0 && axes[axis].y == 0) //release
-                        {
-                            if(axis_up_press) {
-                                fake_event(disp, conf->axis_up, 0);
-                                axis_up_press = 0;
-                            }
-                            if(axis_down_press) {
-                                fake_event(disp, conf->axis_down, 0);
-                                axis_down_press = 0;
-                            }
-                            if(axis_left_press) {
-                                fake_event(disp, conf->axis_left, 0);
-                                axis_left_press = 0;
-                            }
-                            if(axis_right_press) {
-                                fake_event(disp, conf->axis_right, 0);
-                                axis_right_press = 0;
-                            }
+                            if(axis_up_press)
+                                fake_button_event(disp, 0, -32767, -1, 0);
+                            if(axis_down_press)
+                                fake_button_event(disp, 0, 32767, -1, 0);
+                            if(axis_left_press) 
+                                fake_button_event(disp, -32767, 0, -1, 0);
+                            if(axis_right_press)
+                                fake_button_event(disp, 32767, 0, -1, 0);
                         }
                     } else {
                         axis_x_direction = axes[axis].x/32767;
                         axis_y_direction = axes[axis].y/32767;
-                        /* printf("Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y); */
+                        /* fprintf(stderr, "Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y); */
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(motion_thread_t, NULL);
                             motion_thread_created = False;
@@ -463,10 +359,9 @@ int main(int argc, char *argv[])
                 /* Ignore init events. */
                 break;
         }
-        //fflush(stdout);
     }
 
-    free(conf);
+    cfg_free(cfg);
     XCloseDisplay(disp); 
     close(js);
     return 0;
