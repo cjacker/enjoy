@@ -68,10 +68,11 @@ KeyCode str2key(Display *disp, char *keystr)
     return XKeysymToKeycode (disp, key); 
 }
 
-/* support combined keys */
+/* support combined keys, for examples: Super_L+Shift_L+q */
 void fake_key(Display *disp, char *value, Bool state)
 {
-    char * token = strtok(strdup(value), "+");
+    char *end_token;
+    char *token = strtok_r(strdup(value), "+", &end_token);
     // loop through the string to extract all other tokens
     while( token != NULL ) {
         KeyCode kc = str2key(disp, token);
@@ -81,9 +82,23 @@ void fake_key(Display *disp, char *value, Bool state)
         }
         XTestFakeKeyEvent (disp, kc, state, 0);
         XFlush(disp);
-        token = strtok(NULL, "+");
+        token = strtok_r(NULL, "+", &end_token);
     }
 } 
+
+/* support key sequence, for example: "Control_L+g c" */
+void fake_key_sequence(Display *disp, char *value)
+{
+    char *end_str;
+    char *token = strtok_r(strdup(value), " ", &end_str);
+    struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000000  };
+    while(token != NULL ) {
+        fake_key(disp, token, 1);
+        fake_key(disp, token, 0);
+        nanosleep(&ts, NULL);
+        token = strtok_r(NULL, " ", &end_str);
+    }
+}
 
 void fake_mouse_button(Display *disp, int button, Bool state)
 {
@@ -143,10 +158,20 @@ void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
         return;
     }
 
+    /* keyseq */
+    if(strncasecmp (value, "keyseq ", 7) == 0) {
+        /* run key sequence only on key press */
+        if(state == 0) {
+            value += 7; /* key sequance seperate by ' ' */
+            fake_key_sequence(disp, value);
+        }
+        return;
+    }
+  
     /* exec */    
     if(strncasecmp (value, "exec ", 5) == 0) {
-        /* run cmd on key release */
-        if(state == 0) {
+        /* run cmd only on key press */
+        if(state == 1) {
             value += 5; /* command with args */
             char cmd[strlen(value)+1];
             sprintf(cmd, "%s &", value);
@@ -155,8 +180,8 @@ void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
         return;    
     }
 
-    /* mouse_button_<n>: value + 13 is 'n' */
-    if(strncasecmp (value, "mouse_button_", 13) == 0) {
+    /* 'mouse_button <n>': value + 13 is 'n' */
+    if(strncasecmp (value, "mouse_button ", 13) == 0) {
         value += 13;
         if(is_valid_number(value)) /* make sure 'value' is a 'number' */
             fake_mouse_button(disp, atoi(value), state);
@@ -248,18 +273,7 @@ void help(struct cfg_struct *cfg)
     print_cfg(cfg);
 
     printf("\n");
-    printf("For devterm: x is button_0, a is button_1, b is button_2, y is button_3,\n");
-    printf("             select is button_8, start is button_9\n");
-    printf("\nyou can create your own config as '~/.config/enjoyrc'\n\n");
-    printf("Note:\n");
-    printf("  * Set 'axis_as_mouse' to 1 to ignore axis_up/down/left/right settings and use axis as mouse.\n");
-    printf("  * Set combined keys with '+', such as 'Super_L+Shift_L+q'.\n");
-    printf("  * Set mouse click/scroll event with 'mouse_button_<n>', where 'n' is:\n");
-    printf("    - 1 : left button\n");
-    printf("    - 2 : middle button\n");
-    printf("    - 3 : right button\n");
-    printf("    - 4 : scroll up\n");
-    printf("    - 5 : scroll down\n");
+    printf("For more information, please refer to README.md\n");
 }
 
 void load_user_cfg(struct cfg_struct *cfg)
@@ -277,8 +291,8 @@ void init_default_cfg(struct cfg_struct *cfg)
    cfg_set(cfg, "device", "/dev/input/js0");
    cfg_set(cfg, "axis_as_mouse", "1");
    cfg_set(cfg, "button_0", "Super_L");
-   cfg_set(cfg, "button_1", "mouse_button_3");
-   cfg_set(cfg, "button_2", "mouse_button_1");
+   cfg_set(cfg, "button_1", "mouse_button 3");
+   cfg_set(cfg, "button_2", "mouse_button 1");
    cfg_set(cfg, "button_3", "Control_L");
    cfg_set(cfg, "button_8", "Super_L+End");
    cfg_set(cfg, "button_9", "Super_L+d");
