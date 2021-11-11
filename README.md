@@ -1,13 +1,14 @@
 # enjoy
 ## convert joystick events to mouse/key events
 
-Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion and key events. It should work with other joysticks but not tested.
+Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion and key events, or use joystick buttons to launch applications. It should work with other joysticks but not tested.
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
 ## Build
 
 `enjoy` almost have no dependencies but use libx11 and libxtst to simulate mouse/key events:
+
 ```
 sudo apt-get install libx11-dev libxtst-dev
 make
@@ -20,26 +21,30 @@ Since I am a heavy user of i3wm, the default configuration set to:
 
 ```
 device=/dev/input/js0
+# x
 button_0=Super_L
+# a
 button_1=mouse_button_3
+# b
 button_2=mouse_button_1
+# y 
 button_3=Control_L
-button_4=
-button_5=
-button_6=
-button_7=
+# select
 button_8=Super_L+End
+# start
 button_9=Super_L+d
+# axis simulate mouse mition
 axis_as_mouse=1
 axis_up=Up
 axis_down=Down
 axis_left=Left
 axis_right=Right
+
 ```
 
 By default, `axis_as_mouse` set to `1`, that means it will ignore all `axis_up/down/left/right` settings and use axis to send mouse motion event.
 
-You can create your own config file as `~/.enjoyrc` to map buttons and axis to mouse click/scroll/motion or key event.
+You can create your own config file as `~/.config/enjoyrc` to map buttons and axis to mouse click/scroll/motion or key event, or run some application.
 
 It support map combined keys with '+', for example:
 
