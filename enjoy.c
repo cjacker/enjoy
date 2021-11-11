@@ -136,13 +136,13 @@ void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
     }
 
     //TODO, exec    
-    if(strncasecmp (value, "exec ", 5) != 0) {
+    if(strncasecmp (value, "exec ", 5) == 0) {
         fprintf(stderr, "exec is not supported now.\n");
         return;    
     }
 
     /* mouse_button_<n>: value + 13 is 'n' */
-    if(strncasecmp (value, "mouse_button_", 5) != 0) {
+    if(strncasecmp (value, "mouse_button_", 13) == 0) {
         value += 13;
         if(strstr("0123456789", value)) /* make sure it is a 'number' */
             fake_mouse_button(disp, atoi(value), state);
