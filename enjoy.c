@@ -96,12 +96,24 @@ void fake_mouse_button(Display *disp, int button, Bool state)
      XFlush(disp);
 }
 
+Bool is_valid_number(char * string)
+{
+   for(int i = 0; i < strlen( string ); i ++)
+   {
+      //ASCII value of 0 = 48, 9 = 57. So if value is outside of numeric range then fail
+      //Checking for negative sign "-" could be added: ASCII value 45.
+      if (string[i] < 48 || string[i] > 57)
+         return False;
+   }
+   return True;
+}
+
 /* if button_n = -1, it's axis event */
 /* if button_n != -1, ignore x and y */
 void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
 {
     //query button_n value from cfg;
-    char *key = malloc(16);
+    char key[16];
     if(button_n == -1) {
         /* up and down */
         if(x == 0) {
@@ -135,21 +147,25 @@ void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
         return;
     }
 
-    //TODO, exec    
+    /* exec */    
     if(strncasecmp (value, "exec ", 5) == 0) {
-        fprintf(stderr, "exec is not supported now.\n");
+        /* run cmd on key release */
+        if(state == 0) {
+            value += 5; /* command with args */
+            char cmd[strlen(value)+1];
+            sprintf(cmd, "%s &", value);
+            int ret = system(cmd);
+        } 
         return;    
     }
 
     /* mouse_button_<n>: value + 13 is 'n' */
     if(strncasecmp (value, "mouse_button_", 13) == 0) {
         value += 13;
-        if(strstr("0123456789", value)) /* make sure it is a 'number' */
+        if(is_valid_number(value)) /* make sure 'value' is a 'number' */
             fake_mouse_button(disp, atoi(value), state);
     } else
         fake_key_sequence(disp, value, state);
-
-    free(key);
 }
 
 /* read joystick event, 0 success, -1 failed */
@@ -340,8 +356,8 @@ int main(int argc, char *argv[])
                                 fake_button_event(disp, 32767, 0, -1, 0);
                         }
                     } else {
-                        axis_x_direction = axes[axis].x/32767;
-                        axis_y_direction = axes[axis].y/32767;
+                        axis_x_direction = axes[axis].x/32767; /*convert it to -1, 0, 1 */
+                        axis_y_direction = axes[axis].y/32767; /*convert it to -1, 0, 1 */
                         /* fprintf(stderr, "Axis %zu at (%6d, %6d)\n", axis, axes[axis].x, axes[axis].y); */
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(motion_thread_t, NULL);

@@ -1,7 +1,7 @@
 # enjoy
 ## convert joystick events to mouse/key events
 
-Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion and key events, or use joystick buttons to launch applications. It should work with other joysticks but not tested.
+Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to convert joystick events to mouse click/scroll/motion or key events, or use joystick buttons to launch applications. It should work with other joysticks but not tested.
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
@@ -34,7 +34,8 @@ button_3=Control_L
 button_8=Super_L+End
 # button start
 button_9=Super_L+d
-# axis simulate mouse mition, set it to 0 if you want to simulate key/mouse click event.
+# axis simulate mouse mition
+# set it to 0 if you want to simulate key/mouse click event.
 axis_as_mouse=1
 axis_up=Up
 axis_down=Down
@@ -43,9 +44,9 @@ axis_right=Right
 
 ```
 
-By default, `axis_as_mouse` set to `1`, that means it will ignore all `axis_up/down/left/right` settings and use axis to send mouse motion event.
+Set `axis_as_mouse` to `1` will use axis to simulate mouse motion event and ignore `axis_up/down/left/right` settings.
 
-You can create your own config file as `~/.config/enjoyrc` to map buttons and axis to mouse click/scroll/motion or key event, or run some application.
+You can create your own config file as `~/.config/enjoyrc` to map buttons and axis to mouse click/scroll/motion or key event, or launch application.
 
 It support map combined keys with '+', for example:
 
@@ -63,11 +64,15 @@ n=4: scroll up
 n=5: scroll down
 ```
 
+If you need to launch a application, please use:
+```
+button_1 = exec application [args]
+```
+
 If you need to map axis to key or mouse click event, please set:
 ```
 axis_as_mouse=0
 ```
-
 and map `axis_up/down/left/right` to which key or mouse button you need.
 
 Finally, `enjoy`.
