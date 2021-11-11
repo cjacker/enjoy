@@ -54,15 +54,6 @@ void *motion_thread(void * disp) {
     XTestGrabControl(disp, False);
 }
 
-/* state: 'True' for press, 'False' for release */
-void fake_key(Display *disp, KeyCode keycode, Bool state)
-{
-    if(keycode == 0)
-        return;
-    XTestFakeKeyEvent (disp, keycode, state, 0);
-    XFlush(disp);
-}
-
 /* convert string to keycode */
 KeyCode str2key(Display *disp, char *keystr)
 {
@@ -77,14 +68,19 @@ KeyCode str2key(Display *disp, char *keystr)
     return XKeysymToKeycode (disp, key); 
 }
 
-/* process combined key */
-void fake_key_sequence(Display *disp, char *value, Bool state)
+/* support combined keys */
+void fake_key(Display *disp, char *value, Bool state)
 {
     char * token = strtok(strdup(value), "+");
-    // loop through the value to extract all other tokens
+    // loop through the string to extract all other tokens
     while( token != NULL ) {
-        //printf( " %s\n", token ); //printing each token
-        fake_key(disp, str2key(disp, token), state);
+        KeyCode kc = str2key(disp, token);
+        if(kc == 0) {
+            fprintf(stderr, "Wrong keyname: %s\n", token);
+            return;
+        }
+        XTestFakeKeyEvent (disp, kc, state, 0);
+        XFlush(disp);
         token = strtok(NULL, "+");
     }
 } 
@@ -165,7 +161,7 @@ void fake_button_event(Display *disp, int x, int y, int button_n, Bool state)
         if(is_valid_number(value)) /* make sure 'value' is a 'number' */
             fake_mouse_button(disp, atoi(value), state);
     } else
-        fake_key_sequence(disp, value, state);
+        fake_key(disp, value, state);
 }
 
 /* read joystick event, 0 success, -1 failed */
