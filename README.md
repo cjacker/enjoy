@@ -48,7 +48,7 @@ button_3=Control_L
 button_8=Super_L+End
 # button start of DevTerm
 button_9=Super_L+d
-# set it to 0 if you want to use axis to simulate key/mouse click event.
+# set it to 0 to use axis to simulate key/mouse event.
 axis_as_mouse=1
 axis_up=Up
 axis_down=Down
