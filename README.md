@@ -20,18 +20,19 @@ make
 Since I am a heavy user of i3wm, the default configuration set to:
 
 ```
+#joystick device
 device=/dev/input/js0
-# x
+# button x
 button_0=Super_L
-# a
+# button a
 button_1=mouse_button_3
-# b
+# button b
 button_2=mouse_button_1
-# y 
+# button y 
 button_3=Control_L
-# select
+# button select
 button_8=Super_L+End
-# start
+# button start
 button_9=Super_L+d
 # axis simulate mouse mition
 axis_as_mouse=1
@@ -49,12 +50,12 @@ You can create your own config file as `~/.config/enjoyrc` to map buttons and ax
 It support map combined keys with '+', for example:
 
 ```
-button_a=Super_L+Shift_L+q
+button_1=Super_L+Shift_L+q
 ```
 
 If you need to map to mouse click/scroll event, please use:
 ```
-mouse_click_<n>
+mouse_button_<n>
 n=1: left button
 n=2: middle button
 n=3: right button
