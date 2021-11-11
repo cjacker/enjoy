@@ -20,12 +20,16 @@ Since I am a heavy user of i3wm, the default configuration set to:
 
 ```
 device=/dev/input/js0
-button_a=mouse_click_3
-button_b=mouse_click_1
-button_x=Super_L
-button_y=Control_L
-button_select=Super_L+End
-button_start=Super_L+d
+button_0=Super_L
+button_1=mouse_button_3
+button_2=mouse_button_1
+button_3=Control_L
+button_4=
+button_5=
+button_6=
+button_7=
+button_8=Super_L+End
+button_9=Super_L+d
 axis_as_mouse=1
 axis_up=Up
 axis_down=Down

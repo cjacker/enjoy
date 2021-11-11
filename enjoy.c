@@ -43,12 +43,16 @@ pthread_t motion_thread_t;
 typedef struct config {
     char *device;
     int axis_as_mouse;
-    char *button_a;
-    char *button_b;
-    char *button_x;
-    char *button_y;
-    char *button_select;
-    char *button_start;
+    char *button_0;
+    char *button_1;
+    char *button_2;
+    char *button_3;
+    char *button_4;
+    char *button_5;
+    char *button_6;
+    char *button_7;
+    char *button_8;
+    char *button_9;
     char *axis_up;
     char *axis_down;
     char *axis_left;
@@ -61,12 +65,16 @@ config *create_default_config()
     config *p = malloc(sizeof(struct config));
     p->device = "/dev/input/js0";
     p->axis_as_mouse = 1;
-    p->button_a = "mouse_click_3";
-    p->button_b = "mouse_click_1";
-    p->button_x = "Super_L";
-    p->button_y = "Control_L";
-    p->button_select = "Super_L+End";
-    p->button_start = "Super_L+d";
+    p->button_0 = "Super_L";
+    p->button_1 = "mouse_button_3";
+    p->button_2 = "mouse_button_1";
+    p->button_3 = "Control_L";
+    p->button_4 = NULL;
+    p->button_5 = NULL;
+    p->button_6 = NULL;
+    p->button_7 = NULL;
+    p->button_8 = "Super_L+End";
+    p->button_9 = "Super_L+d";
     p->axis_up = "Up";
     p->axis_down = "Down";
     p->axis_left = "Left";
@@ -120,24 +128,29 @@ void fake_key_sequence(Display *disp, char *string, Bool state)
     }
 } 
 
-/* mouse_click_<n>: string + 12 is 'n' */
-void fake_mouse_click(Display *disp, char *string, Bool state)
+void fake_mouse_button(Display *disp, int button, Bool state)
 {
-    char *bn = strdup(string) + 12;
-    //use strstr to check bn is a number.
-    if(bn != NULL && strstr("0123456789", bn)) {
-        /* Fake the mouse button Press and Release events */
-        XTestFakeButtonEvent (disp, atoi(bn), state,  CurrentTime);
-        XFlush(disp);
-    } else
-        fprintf(stderr, "Error mouse_clickformat: %s\n", string);
+     /* Fake the mouse button Press and Release events */
+     XTestFakeButtonEvent (disp, button, state,  CurrentTime);
+     XFlush(disp);
 }
 
+/* mouse_button_<n>: string + 13 is 'n' */
 void fake_event(Display *disp, char *string, Bool state)
 {
-    if(strstr(string, "mouse_click_"))
-        fake_mouse_click(disp, string, state);
-    else
+    if(string == NULL || strlen(string) == 0)
+        return;
+
+    if(strncasecmp (string, "exec ", 5) != 0) {
+    
+        return;    
+    }
+
+    if(strstr(string, "mouse_button_")) {
+        string += 13;
+        if(strstr("0123456789", string)) /* make sure it is a 'number' */
+            fake_mouse_button(disp, atoi(string), state);
+    } else
         fake_key_sequence(disp, string, state);
 }
 
@@ -145,9 +158,7 @@ void fake_event(Display *disp, char *string, Bool state)
 int read_event(int fd, struct js_event *event)
 {
     ssize_t bytes;
-
     bytes = read(fd, event, sizeof(*event));
-
     if (bytes == sizeof(*event))
         return 0;
     /* Error, could not read full event. */
@@ -233,12 +244,16 @@ int parse_line(char *line, char **key, char **value)
 void print_config(config *conf)
 {
     printf("device=%s\n", conf->device);
-    printf("button_a=%s\n", conf->button_a);
-    printf("button_b=%s\n", conf->button_b);
-    printf("button_x=%s\n", conf->button_x);
-    printf("button_y=%s\n", conf->button_y);
-    printf("button_select=%s\n", conf->button_select);
-    printf("button_start=%s\n", conf->button_start);
+    printf("button_0=%s\n", conf->button_0?conf->button_0:"");
+    printf("button_1=%s\n", conf->button_1?conf->button_1:"");
+    printf("button_2=%s\n", conf->button_2?conf->button_2:"");
+    printf("button_3=%s\n", conf->button_3?conf->button_3:"");
+    printf("button_4=%s\n", conf->button_4?conf->button_4:"");
+    printf("button_5=%s\n", conf->button_5?conf->button_5:"");
+    printf("button_6=%s\n", conf->button_6?conf->button_6:"");
+    printf("button_7=%s\n", conf->button_7?conf->button_7:"");
+    printf("button_8=%s\n", conf->button_8?conf->button_8:"");
+    printf("button_9=%s\n", conf->button_9?conf->button_9:"");
     printf("axis_as_mouse=%d\n", conf->axis_as_mouse);
     printf("axis_up=%s\n", conf->axis_up);
     printf("axis_down=%s\n", conf->axis_down);
@@ -254,11 +269,14 @@ void help(config *default_config)
     printf("        By cjacker <cjacker@foxmail.com>\n\n");
     printf("the default config set to:\n\n");
     print_config(default_config);
+    printf("\n");
+    printf("For devterm: x is button_0, a is button_1, b is button_2, y is button_3,\n");
+    printf("             select is button_8, start is button_9\n");
     printf("\nyou can create your own config as '~/.enjoyrc'\n\n");
     printf("Note:\n");
     printf("  * Set 'axis_as_mouse' to 1 to ignore axis_up/down/left/right settings and use axis as mouse.\n");
     printf("  * Set combined keys with '+', such as 'Super_L+Shift_L+q'.\n");
-    printf("  * Set mouse click/scroll event with 'mouse_click_[1,2,3,4,5]'\n");
+    printf("  * Set mouse click/scroll event with 'mouse_button_<n>', where 'n' is:\n");
     printf("    - 1 : left button\n");
     printf("    - 2 : middle button\n");
     printf("    - 3 : right button\n");
@@ -293,18 +311,26 @@ void load_user_config(config *conf)
                 continue;
             if (strcmp(key, "device") == 0)
                 conf->device=strdup(value);
-            else if (strcmp(key, "button_a") == 0)
-                conf->button_a=strdup(value);
-            else if (strcmp(key, "button_b") == 0)
-                conf->button_b=strdup(value);
-            else if (strcmp(key, "button_x") == 0)
-                conf->button_x=strdup(value);
-            else if (strcmp(key, "button_y") == 0)
-                conf->button_y=strdup(value);
-            else if (strcmp(key, "button_select") == 0)
-                conf->button_select=strdup(value);
-            else if (strcmp(key, "button_start") == 0)
-                conf->button_start=strdup(value);
+            else if (strcmp(key, "button_0") == 0)
+                conf->button_0=strdup(value);
+            else if (strcmp(key, "button_1") == 0)
+                conf->button_1=strdup(value);
+            else if (strcmp(key, "button_2") == 0)
+                conf->button_2=strdup(value);
+            else if (strcmp(key, "button_3") == 0)
+                conf->button_3=strdup(value);
+            else if (strcmp(key, "button_4") == 0)
+                conf->button_4=strdup(value);
+            else if (strcmp(key, "button_5") == 0)
+                conf->button_5=strdup(value);
+            else if (strcmp(key, "button_6") == 0)
+                conf->button_6=strdup(value);
+            else if (strcmp(key, "button_7") == 0)
+                conf->button_7=strdup(value);
+            else if (strcmp(key, "button_8") == 0)
+                conf->button_8=strdup(value);
+            else if (strcmp(key, "button_9") == 0)
+                conf->button_9=strdup(value);
             else if (strcmp(key, "axis_up") == 0)
                 conf->axis_up=strdup(value);
             else if (strcmp(key, "axis_down") == 0)
@@ -360,12 +386,16 @@ int main(int argc, char *argv[])
             case JS_EVENT_BUTTON:
                 switch(event.number)
                 {
-                    case 0: fake_event(disp, conf->button_x, event.value); break;
-                    case 1: fake_event(disp, conf->button_a, event.value); break;
-                    case 2: fake_event(disp, conf->button_b, event.value); break;
-                    case 3: fake_event(disp, conf->button_y, event.value); break;
-                    case 8: fake_event(disp, conf->button_select, event.value); break;
-                    case 9: fake_event(disp, conf->button_start, event.value); break;
+                    case 0: fake_event(disp, conf->button_0, event.value); break;
+                    case 1: fake_event(disp, conf->button_1, event.value); break;
+                    case 2: fake_event(disp, conf->button_2, event.value); break;
+                    case 3: fake_event(disp, conf->button_3, event.value); break;
+                    case 4: fake_event(disp, conf->button_4, event.value); break;
+                    case 5: fake_event(disp, conf->button_5, event.value); break;
+                    case 6: fake_event(disp, conf->button_6, event.value); break;
+                    case 7: fake_event(disp, conf->button_7, event.value); break;
+                    case 8: fake_event(disp, conf->button_8, event.value); break;
+                    case 9: fake_event(disp, conf->button_9, event.value); break;
                     default: break;
                 }
             case JS_EVENT_AXIS:
