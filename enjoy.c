@@ -26,6 +26,13 @@ Run:
 #include "cfg_parse.h"
 #include "arg.h"
 
+#include "uinput.h"
+
+
+static int uinput_fd = -1;
+
+static int use_uinput_motion = 0;
+
 char *argv0;
 
 static int debug_mode = 0;
@@ -52,6 +59,8 @@ Bool motion_thread_created = False;
 pthread_t motion_thread_t;
 
 void *motion_thread(void * disp) {
+    if(debug_mode) 
+        fprintf(stderr, "Xtst motion thread\n");
     XTestGrabControl(disp, True);
     while(axis_x_direction != 0 || axis_y_direction != 0) {
         XTestFakeRelativeMotionEvent(disp, axis_x_direction, axis_y_direction, CurrentTime);
@@ -60,6 +69,19 @@ void *motion_thread(void * disp) {
         usleep((motion_interval > 1000) ? motion_interval -= 200 : motion_interval);
     }
     XTestGrabControl(disp, False);
+    return NULL;
+}
+
+void *motion_thread_uinput() {
+    if(debug_mode) 
+        fprintf(stderr, "uinput motion thread\n");
+    while(axis_x_direction != 0 || axis_y_direction != 0) {
+        emit(uinput_fd, EV_REL, REL_X, axis_x_direction);
+        emit(uinput_fd, EV_REL, REL_Y, axis_y_direction);
+        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+        /* motion acceleration */
+        usleep((motion_interval > 1000) ? motion_interval -= 200 : motion_interval);
+    }
     return NULL;
 }
 
@@ -370,6 +392,9 @@ int main(int argc, char *argv[])
     case 'D':
       debug_mode = 1;
       break;
+    case 'i':
+      use_uinput_motion = 1;
+      break;
     case 'n':
       no_default_config = 1;
       break;
@@ -398,6 +423,8 @@ int main(int argc, char *argv[])
 
     if (js == -1)
         perror("Could not open joystick");
+
+    uinput_fd = init_uinput();
 
     /* This loop will exit if the controller is unplugged. */
     while (read_event(js, &event) == 0)
@@ -443,7 +470,10 @@ int main(int argc, char *argv[])
                             /* restore move intervals.*/
                             motion_interval = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
-                            pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
+                            if(use_uinput_motion)
+                                pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
+                            else
+                                pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
                             motion_thread_created = True;
                         }
                     }
@@ -458,5 +488,7 @@ int main(int argc, char *argv[])
     cfg_free(cfg);
     XCloseDisplay(disp); 
     close(js);
+    if(uinput_fd != -1)
+        close_uinput(uinput_fd);
     return 0;
 }
