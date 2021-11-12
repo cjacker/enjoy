@@ -181,7 +181,8 @@ void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int b
         fprintf(stderr, "'%s' not map\n", key);
         return;
     } else {
-        fprintf(stderr, "'%s' map to '%s'\n", key, value);
+        if(debug_mode)
+            fprintf(stderr, "'%s' map to '%s'\n", key, value);
     }
 
     /* keyseq */
@@ -434,8 +435,8 @@ int main(int argc, char *argv[])
                                 fake_button_event(disp, True, axis, 32767, 0, event.number, 0);
                         }
                     } else {
-                        axis_x_direction = axes[axis].x/32767; /*convert it to -1, 0, 1 */
-                        axis_y_direction = axes[axis].y/32767; /*convert it to -1, 0, 1 */
+                        axis_x_direction = axes[axis].x==0 ? 0 : -(axes[axis].x < 0) | 1; /*convert it to -1, 0, 1 */
+                        axis_y_direction = axes[axis].y==0 ? 0 : -(axes[axis].y < 0) | 1; /*convert it to -1, 0, 1 */
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(motion_thread_t, NULL);
                             motion_thread_created = False;
