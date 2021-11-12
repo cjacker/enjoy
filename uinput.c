@@ -10,7 +10,13 @@
 
 #include "keytable.h"
 
+extern int uinput_fd;
 extern int debug_mode;
+
+extern int axis_x_direction;
+extern int axis_y_direction;
+extern int motion_interval;
+
 
 void emit(int fd, int type, int code, int val)
 {
@@ -79,6 +85,19 @@ void fake_mouse_button_uinput(int fd, int button_number, int state)
         default:
             break;
     }
+}
+
+void *motion_thread_uinput() {
+    if(debug_mode)
+        fprintf(stderr, "uinput motion thread\n");
+    while(axis_x_direction != 0 || axis_y_direction != 0) {
+        emit(uinput_fd, EV_REL, REL_X, axis_x_direction);
+        emit(uinput_fd, EV_REL, REL_Y, axis_y_direction);
+        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
+        /* motion acceleration */
+        usleep((motion_interval > 1000) ? motion_interval -= 200 : motion_interval);
+    }
+    return NULL;
 }
 
 

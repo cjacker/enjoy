@@ -12,5 +12,6 @@ typedef struct {
 } keymap;
 
 keymap* get_keymap_by_name(char *name);
+void print_keytable();
 
 #endif

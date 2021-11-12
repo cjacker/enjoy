@@ -7,7 +7,7 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 ## Build
 
-`enjoy` almost have no dependencies but use libx11 and libxtst to simulate mouse/key events:
+`enjoy` almost have no dependencies but optinally use libx11 and libxtst to simulate mouse/key events:
 
 ```
 sudo apt-get install libx11-dev libxtst-dev
@@ -25,10 +25,9 @@ enjoy -i
 
 `enjoy` support:
 
-* simulate key use 'X KeySym'. it support single key or combined keys with `+` delimiter, for example : `Super_L+Shift_L+q`.
-    * Standard  KeySym  names  are  obtained from X11/keysymdef.h by removing the XK_ prefix from each name.
+* simulate key use 'keyname'. it support single key or combined keys with `+` delimiter, for example : `super_l+shift_l+q`.
 
-* simulate key sequence, use `keyseq ` prefix and continue with 'X KeySym', for example : `keyseq Control_L+g c`.
+* simulate key sequence, use `keyseq ` prefix and continue with 'keyname', for example : `keyseq control_l+g c`.
 
 * simulate mouse button, use `mouse_button ` prefix, continue with a 'button number'. 
     * `1` = left button, `2` = middle button, `3` = right button, `4` = scroll up, `5` = scroll down.
@@ -39,11 +38,13 @@ enjoy -i
 
 ## Usage
 
-`-D` : to enable debug mode to help you find with joystick "key" should be mapped.
+`-D` : to enable debug mode to help you find which joystick "key" should be mapped.
 
 `-n` : to ignore default configuration.
 
-`-i` : to use 'uinput' instead of XTest to simulate mouse motion, better performance and experience.
+`-x` : to use 'Xtest' instead of 'uinput' to simulate mouse motion, slow than uinput.
+
+`-k` : print out 'enjoy keyname' can be used in config file.
 
 `-c <config file name>` : to load another config file instead of `~/.config/enjoyrc`, useful for launching multiple instances to support multiple joystick devices.
 
@@ -60,23 +61,23 @@ Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
 # joystick device
 device=/dev/input/js0
 # button x of DevTerm
-button_0=Super_L
+button_0=super_l
 # button a of DevTerm
 button_1=mouse_button 3
 # button b of DevTerm
 button_2=mouse_button 1
 # button y of DevTerm
-button_3=Control_L
+button_3=control_l
 # button select of DevTerm
-button_8=Super_L+End
+button_8=super_l+end
 # button start of DevTerm
-button_9=Super_L+d
+button_9=super_l+d
 # set it to 0 to use axis to simulate key/mouse event.
 axis0_as_mouse=1
-axis0_button0_up=Up
-axis0_bttton0_down=Down
-axis0_button1_left=Left
-axis0_button1_right=Right
+axis0_button0_up=up
+axis0_bttton0_down=down
+axis0_button1_left=left
+axis0_button1_right=right
 
 ```
 

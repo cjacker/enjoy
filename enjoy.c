@@ -20,25 +20,26 @@ Run:
 #include <pthread.h>
 
 #include <linux/joystick.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
 
 #include "cfg_parse.h"
 #include "arg.h"
 
-#include "uinput.h"
 #include "keytable.h"
 
+#include "uinput.h"
+#include "x.h"
 
-static int uinput_fd = -1;
+static int use_x = 0;
 
-static int use_uinput = 0;
+int uinput_fd = -1;
+
+Display *disp = NULL;
+
+int debug_mode = 0;
 
 char *argv0;
 
-int debug_mode = 0;
 static int no_default_config = 0;
-
 static char * config_file = NULL;
 
 /* global config */
@@ -59,70 +60,8 @@ int motion_interval = MOTION_INTERVAL_INIT;
 Bool motion_thread_created = False;
 pthread_t motion_thread_t;
 
-void *motion_thread(void * disp) {
-    if(debug_mode) 
-        fprintf(stderr, "Xtst motion thread\n");
-    XTestGrabControl(disp, True);
-    while(axis_x_direction != 0 || axis_y_direction != 0) {
-        XTestFakeRelativeMotionEvent(disp, axis_x_direction, axis_y_direction, CurrentTime);
-        XFlush(disp);
-        /* motion acceleration */
-        usleep((motion_interval > 1000) ? motion_interval -= 200 : motion_interval);
-    }
-    XTestGrabControl(disp, False);
-    return NULL;
-}
-
-void *motion_thread_uinput() {
-    if(debug_mode) 
-        fprintf(stderr, "uinput motion thread\n");
-    while(axis_x_direction != 0 || axis_y_direction != 0) {
-        emit(uinput_fd, EV_REL, REL_X, axis_x_direction);
-        emit(uinput_fd, EV_REL, REL_Y, axis_y_direction);
-        emit(uinput_fd, EV_SYN, SYN_REPORT, 0);
-        /* motion acceleration */
-        usleep((motion_interval > 1000) ? motion_interval -= 200 : motion_interval);
-    }
-    return NULL;
-}
-
-/* convert string to keycode */
-KeyCode str2key(Display *disp, char *keystr)
-{
-    int key = XStringToKeysym(keystr);
-
-    if(key == NoSymbol) {
-        fprintf(stderr, "Error key format: %s\n", keystr);
-        return 0;
-    }
-    if(disp == NULL)
-        return 0;
-    return XKeysymToKeycode (disp, key); 
-}
-
-/* support combined keys, for examples: Super_L+Shift_L+q */
-void fake_key(Display *disp, char *value, Bool state)
-{
-    char *keys = malloc(strlen(value)+1);
-    strcpy(keys, value);
-    char *end_token;
-    char *token = strtok_r(keys, "+", &end_token);
-    // loop through the string to extract all other tokens
-    while( token != NULL ) {
-        KeyCode kc = str2key(disp, token);
-        if(kc == 0) {
-            fprintf(stderr, "Wrong keyname: %s\n", token);
-            return;
-        }
-        XTestFakeKeyEvent (disp, kc, state, 0);
-        XFlush(disp);
-        token = strtok_r(NULL, "+", &end_token);
-    }
-    free(keys);
-} 
-
 /* support key sequence, for example: "Control_L+g c" */
-void fake_key_sequence(Display *disp, char *value)
+void fake_key_sequence(char *value)
 {
     char *keyseq = malloc(strlen(value)+1);
     strcpy(keyseq, value);
@@ -131,23 +70,17 @@ void fake_key_sequence(Display *disp, char *value)
     char *token = strtok_r(keyseq, " ", &end_str);
     struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000  };
     while(token != NULL ) {
-        if(use_uinput) {
+        if(!use_x) {
             fake_key_uinput(uinput_fd, token, 1);
             fake_key_uinput(uinput_fd, token, 0);
         } else {
-            fake_key(disp, token, 1);
-            fake_key(disp, token, 0);
+            fake_key_x(disp, token, 1);
+            fake_key_x(disp, token, 0);
         }
         nanosleep(&ts, NULL);
         token = strtok_r(NULL, " ", &end_str);
     }
     free(keyseq);
-}
-
-void fake_mouse_button(Display *disp, int button, Bool state)
-{
-     XTestFakeButtonEvent (disp, button, state,  CurrentTime);
-     XFlush(disp);
 }
 
 Bool is_valid_number(char * string)
@@ -169,7 +102,7 @@ Bool is_valid_number(char * string)
  * button_n: which button
  * state: press or release
  */
-void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int button_n, Bool state)
+void fake_button_event(Bool axis, int axis_n, int x, int y, int button_n, Bool state)
 {
     //query button_n value from cfg;
     char key[20];
@@ -218,7 +151,7 @@ void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int b
         /* run key sequence only on key press */
         if(state == 1) {
             value += 7; /* key sequance seperate by ' ' */
-            fake_key_sequence(disp, value);
+            fake_key_sequence(value);
         }
         return;
     }
@@ -239,15 +172,15 @@ void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int b
     if(strncasecmp (value, "mouse_button ", 13) == 0) {
         value += 13;
         if(is_valid_number(value)) /* make sure 'value' is a 'number' */
-            if(use_uinput)
+            if(!use_x)
                 fake_mouse_button_uinput(uinput_fd, atoi(value), state);
             else
-                fake_mouse_button(disp, atoi(value), state);
+                fake_mouse_button_x(disp, atoi(value), state);
     } else
-        if(use_uinput)
+        if(!use_x)
             fake_key_uinput(uinput_fd, value, state);
         else
-            fake_key(disp, value, state);
+            fake_key_x(disp, value, state);
 }
 
 /* read joystick event, 0 success, -1 failed */
@@ -332,16 +265,17 @@ void usage()
            "Usage: enjoy [-D] [-n] [-h] [-c configfile]\n\n"
            "Args:\n"
            " -D: debug mode, report joystick event name can be used in config file.\n"
-           " -i: use 'uinput' instead of XTest for mouse motion.\n"
+           " -x: use Xtest instead of uinput to simulate events, slow.\n"
            " -n: no default configurations.\n"
            " -c <configfile>: use '~/.config/<configfile>' as config file.\n"
+           " -k: print 'keyname' can be used in config file.\n"
            " -h: show this message.\n\n"
            "Config file format:\n"
-           " config file of enjoy use key-value format,\n"
-           " the key is the name of joystick event (Use '-D' to find out),\n"
+           " enjoy's config file use 'key=value' format,\n"
+           " the key is the name of joystick event (use debug mode to find out),\n"
            " the value of key has below formats:\n"
-           "    1. X Keysym or Combined Keysym with '+' as delimiter, for example: Up, Control_L+Shift_L+q.\n"
-           "    2. Key sequence prefix with 'keyseq ', continue with a sequence of X Keysyms.\n"
+           "    1. Keyname or combined keyname with '+' as delimiter, for example: up, control_l+shift_l+q.\n"
+           "    2. Key sequence prefix with 'keyseq ', continue with a sequence of keyname.\n"
            "    3. Mouse button prefix with 'mouse_button ', continue with a number: 1/left, 2/middle, 3/right, 4/scrollup, 5/scrolldown\n"
            "    4. Launch App prefix with 'exec ', continue with command and args\n"
            "    5. Set 'axis<n>_as_mouse' to 1 will treate axis as mouse motion\n\n"
@@ -370,16 +304,16 @@ void init_default_cfg(struct cfg_struct *cfg)
 {
    cfg_set(cfg, "device", "/dev/input/js0");
    cfg_set(cfg, "axis0_as_mouse", "1");
-   cfg_set(cfg, "button_0", "Super_L");
+   cfg_set(cfg, "button_0", "super_l");
    cfg_set(cfg, "button_1", "mouse_button 3");
    cfg_set(cfg, "button_2", "mouse_button 1");
-   cfg_set(cfg, "button_3", "Control_L");
-   cfg_set(cfg, "button_8", "Super_L+End");
-   cfg_set(cfg, "button_9", "Super_L+d");
-   cfg_set(cfg, "axis0_button1_up", "Up");
-   cfg_set(cfg, "axis0_button1_down", "Down");
-   cfg_set(cfg, "axis0_button0_left", "Left");
-   cfg_set(cfg, "axis0_button0_right", "Right");
+   cfg_set(cfg, "button_3", "control_l");
+   cfg_set(cfg, "button_8", "super_l+end");
+   cfg_set(cfg, "button_9", "super_l+d");
+   cfg_set(cfg, "axis0_button1_up", "up");
+   cfg_set(cfg, "axis0_button1_down", "down");
+   cfg_set(cfg, "axis0_button0_left", "left");
+   cfg_set(cfg, "axis0_button0_right", "right");
 }
 
 int main(int argc, char *argv[])
@@ -390,23 +324,14 @@ int main(int argc, char *argv[])
     struct axis_state axes[3] = {0};
     size_t axis;
 
-    KeyCode keycode = 0;
-
-    /* for mouse move thread. */
-    XInitThreads();
-
-    Display *disp = XOpenDisplay (NULL);
-
-    /* init config file; */
-    cfg = cfg_init();
 
     /* process arguments */
     ARGBEGIN {
     case 'D':
       debug_mode = 1;
       break;
-    case 'i':
-      use_uinput = 1;
+    case 'x':
+      use_x = 1;
       break;
     case 'n':
       no_default_config = 1;
@@ -417,11 +342,18 @@ int main(int argc, char *argv[])
     case 'h':
       usage();
       exit(0);
+    case 'k':
+      print_keytable();
+      exit(0);
     default:
       usage();
       exit(0);
     }
     ARGEND;
+
+    /* init config file; */
+    cfg = cfg_init();
+
 
     /* init default configuration */
     if(!no_default_config)
@@ -434,10 +366,16 @@ int main(int argc, char *argv[])
 
     js = open(device, O_RDONLY);
 
-    if (js == -1)
+    if (js == -1){
         perror("Could not open joystick");
+        exit(1);
+    }
 
     uinput_fd = init_uinput();
+
+    /* for mouse move thread. */
+    XInitThreads();
+    disp = XOpenDisplay (NULL);
 
     /* This loop will exit if the controller is unplugged. */
     while (read_event(js, &event) == 0)
@@ -445,7 +383,7 @@ int main(int argc, char *argv[])
         switch (event.type)
         {
             case JS_EVENT_BUTTON:
-                fake_button_event(disp, False, -1, 0, 0, event.number, event.value);
+                fake_button_event(False, -1, 0, 0, event.number, event.value);
                 break;
             case JS_EVENT_AXIS:
                 axis = get_axis_state(&event, axes);
@@ -462,17 +400,17 @@ int main(int argc, char *argv[])
                     /* null to 0. */
                     if(!(atoi(cfg_get(cfg, axis_as_mouse_key) ? cfg_get(cfg, axis_as_mouse_key) : "0"))) {
                         if(axes[axis].x != 0 || axes[axis].y != 0)
-                            fake_button_event(disp, True, axis, axes[axis].x, axes[axis].y, event.number, 1);
+                            fake_button_event(True, axis, axes[axis].x, axes[axis].y, event.number, 1);
                         if(axes[axis].x == 0 && axes[axis].y == 0) /* release */
                         {
                             if(axis_up_press)
-                                fake_button_event(disp, True, axis, 0, -32767, event.number, 0);
+                                fake_button_event(True, axis, 0, -32767, event.number, 0);
                             if(axis_down_press)
-                                fake_button_event(disp, True, axis, 0, 32767, event.number, 0);
+                                fake_button_event(True, axis, 0, 32767, event.number, 0);
                             if(axis_left_press) 
-                                fake_button_event(disp, True, axis, -32767, 0, event.number, 0);
+                                fake_button_event(True, axis, -32767, 0, event.number, 0);
                             if(axis_right_press)
-                                fake_button_event(disp, True, axis, 32767, 0, event.number, 0);
+                                fake_button_event(True, axis, 32767, 0, event.number, 0);
                         }
                     } else {
                         axis_x_direction = axes[axis].x==0 ? 0 : -(axes[axis].x < 0) | 1; /*convert it to -1, 0, 1 */
@@ -483,10 +421,10 @@ int main(int argc, char *argv[])
                             /* restore move intervals.*/
                             motion_interval = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
-                            if(use_uinput)
+                            if(!use_x)
                                 pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
                             else
-                                pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
+                                pthread_create(&motion_thread_t, NULL, motion_thread_x, (void *)disp);
                             motion_thread_created = True;
                         }
                     }

@@ -133,3 +133,14 @@ keymap* get_keymap_by_name(char *name)
     }
     return km;
 }
+
+void print_keytable()
+{
+	printf("%-15s|%-22s|%-15s\n", "enjoy keyname", "x keyname", "uinput code");
+    printf("--------------------------------------------------\n");
+    int i = 0;
+    while(keytable[i].name != NULL) {
+		printf("%-15s|%-22s|%-15d\n", keytable[i].name, keytable[i].xkeyname, keytable[i].uinpcode);
+        i++;
+    }
+}
