@@ -80,8 +80,10 @@ KeyCode str2key(Display *disp, char *keystr)
 /* support combined keys, for examples: Super_L+Shift_L+q */
 void fake_key(Display *disp, char *value, Bool state)
 {
+    char *keys = malloc(strlen(value)+1);
+    strcpy(keys, value);
     char *end_token;
-    char *token = strtok_r(strdup(value), "+", &end_token);
+    char *token = strtok_r(keys, "+", &end_token);
     // loop through the string to extract all other tokens
     while( token != NULL ) {
         KeyCode kc = str2key(disp, token);
@@ -93,13 +95,17 @@ void fake_key(Display *disp, char *value, Bool state)
         XFlush(disp);
         token = strtok_r(NULL, "+", &end_token);
     }
+    free(keys);
 } 
 
 /* support key sequence, for example: "Control_L+g c" */
 void fake_key_sequence(Display *disp, char *value)
 {
+    char *keyseq = malloc(strlen(value)+1);
+    strcpy(keyseq, value);
+
     char *end_str;
-    char *token = strtok_r(strdup(value), " ", &end_str);
+    char *token = strtok_r(keyseq, " ", &end_str);
     struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000000  };
     while(token != NULL ) {
         fake_key(disp, token, 1);
@@ -107,6 +113,7 @@ void fake_key_sequence(Display *disp, char *value)
         nanosleep(&ts, NULL);
         token = strtok_r(NULL, " ", &end_str);
     }
+    free(keyseq);
 }
 
 void fake_mouse_button(Display *disp, int button, Bool state)
