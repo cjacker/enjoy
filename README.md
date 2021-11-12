@@ -7,7 +7,9 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 ## Features
 
-`enjoy` support:
+`enjoy` support: 
+
+* support both x or wayland, even console. since `enjoy` use 'uinput' to simulate key/mouse events.
 
 * simulate key use 'keyname'. it support single key or combined keys with `+` delimiter, for example : `super_l+shift_l+q`.
 
