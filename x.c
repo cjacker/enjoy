@@ -16,6 +16,16 @@ extern int axis_x_direction;
 extern int axis_y_direction;
 extern int motion_interval;
 
+Display *init_x() {
+    /* for multithread */
+    XInitThreads();
+    return XOpenDisplay (NULL);
+}
+
+void close_x(Display *disp) {
+    XCloseDisplay(disp);
+}
+
 void *motion_thread_x(void * disp) {
     if(debug_mode)
         fprintf(stderr, "Xtst motion thread\n");

@@ -27,13 +27,18 @@ Run:
 #include "keytable.h"
 
 #include "uinput.h"
+
+#ifdef WITH_X
 #include "x.h"
+#endif
 
 static int use_x = 0;
 
 int uinput_fd = -1;
 
+#ifdef WITH_X
 Display *disp = NULL;
+#endif
 
 int debug_mode = 0;
 
@@ -57,7 +62,7 @@ int axis_y_direction = 0;
 #define MOTION_INTERVAL_INIT 8000
 int motion_interval = MOTION_INTERVAL_INIT;
 
-Bool motion_thread_created = False;
+int motion_thread_created = 0;
 pthread_t motion_thread_t;
 
 /* support key sequence, for example: "Control_L+g c" */
@@ -74,8 +79,10 @@ void fake_key_sequence(char *value)
             fake_key_uinput(uinput_fd, token, 1);
             fake_key_uinput(uinput_fd, token, 0);
         } else {
+#ifdef WITH_X
             fake_key_x(disp, token, 1);
             fake_key_x(disp, token, 0);
+#endif
         }
         nanosleep(&ts, NULL);
         token = strtok_r(NULL, " ", &end_str);
@@ -83,16 +90,16 @@ void fake_key_sequence(char *value)
     free(keyseq);
 }
 
-Bool is_valid_number(char * string)
+int is_valid_number(char * string)
 {
    for(int i = 0; i < strlen( string ); i ++)
    {
       //ASCII value of 0 = 48, 9 = 57. So if value is outside of numeric range then fail
       //Checking for negative sign "-" could be added: ASCII value 45.
       if (string[i] < 48 || string[i] > 57)
-         return False;
+         return 0;
    }
-   return True;
+   return 1;
 }
 
 /* axis: is axis event or not
@@ -102,7 +109,7 @@ Bool is_valid_number(char * string)
  * button_n: which button
  * state: press or release
  */
-void fake_button_event(Bool axis, int axis_n, int x, int y, int button_n, Bool state)
+void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int state)
 {
     //query button_n value from cfg;
     char key[20];
@@ -174,13 +181,17 @@ void fake_button_event(Bool axis, int axis_n, int x, int y, int button_n, Bool s
         if(is_valid_number(value)) /* make sure 'value' is a 'number' */
             if(!use_x)
                 fake_mouse_button_uinput(uinput_fd, atoi(value), state);
+#ifdef WITH_X
             else
                 fake_mouse_button_x(disp, atoi(value), state);
+#endif
     } else
         if(!use_x)
             fake_key_uinput(uinput_fd, value, state);
+#ifdef WITH_X
         else
             fake_key_x(disp, value, state);
+#endif
 }
 
 /* read joystick event, 0 success, -1 failed */
@@ -330,9 +341,11 @@ int main(int argc, char *argv[])
     case 'D':
       debug_mode = 1;
       break;
+#ifdef WITH_X
     case 'x':
       use_x = 1;
       break;
+#endif
     case 'n':
       no_default_config = 1;
       break;
@@ -373,17 +386,16 @@ int main(int argc, char *argv[])
 
     uinput_fd = init_uinput();
 
-    /* for mouse move thread. */
-    XInitThreads();
-    disp = XOpenDisplay (NULL);
-
+#ifdef WITH_X
+    disp = init_x();
+#endif
     /* This loop will exit if the controller is unplugged. */
     while (read_event(js, &event) == 0)
     {
         switch (event.type)
         {
             case JS_EVENT_BUTTON:
-                fake_button_event(False, -1, 0, 0, event.number, event.value);
+                fake_button_event(0, -1, 0, 0, event.number, event.value);
                 break;
             case JS_EVENT_AXIS:
                 axis = get_axis_state(&event, axes);
@@ -400,32 +412,34 @@ int main(int argc, char *argv[])
                     /* null to 0. */
                     if(!(atoi(cfg_get(cfg, axis_as_mouse_key) ? cfg_get(cfg, axis_as_mouse_key) : "0"))) {
                         if(axes[axis].x != 0 || axes[axis].y != 0)
-                            fake_button_event(True, axis, axes[axis].x, axes[axis].y, event.number, 1);
+                            fake_button_event(1, axis, axes[axis].x, axes[axis].y, event.number, 1);
                         if(axes[axis].x == 0 && axes[axis].y == 0) /* release */
                         {
                             if(axis_up_press)
-                                fake_button_event(True, axis, 0, -32767, event.number, 0);
+                                fake_button_event(1, axis, 0, -32767, event.number, 0);
                             if(axis_down_press)
-                                fake_button_event(True, axis, 0, 32767, event.number, 0);
+                                fake_button_event(1, axis, 0, 32767, event.number, 0);
                             if(axis_left_press) 
-                                fake_button_event(True, axis, -32767, 0, event.number, 0);
+                                fake_button_event(1, axis, -32767, 0, event.number, 0);
                             if(axis_right_press)
-                                fake_button_event(True, axis, 32767, 0, event.number, 0);
+                                fake_button_event(1, axis, 32767, 0, event.number, 0);
                         }
                     } else {
                         axis_x_direction = axes[axis].x==0 ? 0 : -(axes[axis].x < 0) | 1; /*convert it to -1, 0, 1 */
                         axis_y_direction = axes[axis].y==0 ? 0 : -(axes[axis].y < 0) | 1; /*convert it to -1, 0, 1 */
                         if(axes[axis].x == 0 && axes[axis].y == 0) { 
                             pthread_join(motion_thread_t, NULL);
-                            motion_thread_created = False;
+                            motion_thread_created = 0;
                             /* restore move intervals.*/
                             motion_interval = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
                             if(!use_x)
                                 pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
+#ifdef WITH_X
                             else
                                 pthread_create(&motion_thread_t, NULL, motion_thread_x, (void *)disp);
-                            motion_thread_created = True;
+#endif
+                            motion_thread_created = 1;
                         }
                     }
                 }
@@ -437,8 +451,11 @@ int main(int argc, char *argv[])
     }
 
     cfg_free(cfg);
-    XCloseDisplay(disp); 
     close(js);
+#ifdef WITH_X
+    if(disp)
+        close_x(disp); 
+#endif
     if(uinput_fd != -1)
         close_uinput(uinput_fd);
     return 0;
