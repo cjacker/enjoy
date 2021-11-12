@@ -41,6 +41,10 @@ make
 
 `-h` : to show help message.
 
+For more than one joysticks:
+
+You may need to create multiple config files under `~/.config` and launch multiple `enjoy` instance.
+
 ## Default configuration
 Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
 
