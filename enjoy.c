@@ -180,7 +180,7 @@ void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int b
     /* keyseq */
     if(strncasecmp (value, "keyseq ", 7) == 0) {
         /* run key sequence only on key press */
-        if(state == 0) {
+        if(state == 1) {
             value += 7; /* key sequance seperate by ' ' */
             fake_key_sequence(disp, value);
         }
