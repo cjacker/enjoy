@@ -8,6 +8,7 @@
 #include <ctype.h>
 
 #include "x.h"
+#include "keytable.h"
 
 extern int debug_mode;
 
@@ -52,13 +53,21 @@ void fake_key_x(Display *disp, char *value, Bool state)
     char *token = strtok_r(keys, "+", &end_token);
     // loop through the string to extract all other tokens
     while( token != NULL ) {
-        KeyCode kc = str2key(disp, token);
-        if(kc == 0) {
-            fprintf(stderr, "Wrong keyname: %s\n", token);
-            return;
+        keymap *km = get_keymap_by_name(token);
+        if(km->name != NULL) {
+            if(debug_mode)
+                fprintf(stderr, "x: %s, %s, %d, %d\n", km->name, km->xkeyname, km->uinpcode, state);
+            KeyCode kc = str2key(disp, km->xkeyname);
+            if(kc == 0) {
+                fprintf(stderr, "Wrong keyname: %s\n", token);
+                return;
+            }
+            XTestFakeKeyEvent (disp, kc, state, 0);
+            XFlush(disp);
         }
-        XTestFakeKeyEvent (disp, kc, state, 0);
-        XFlush(disp);
+        free(km->name);
+        free(km->xkeyname);
+        free(km);
         token = strtok_r(NULL, "+", &end_token);
     }
     free(keys);
