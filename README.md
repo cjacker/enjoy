@@ -15,11 +15,11 @@ make
 ./enjoy
 ```
 
-## Usage
+## Features
 
 `enjoy` support:
 
-* simulate key use 'X KeySym'. it support combined keys with `+` delimiter, for example : `Super_L+Shift_L+q`.
+* simulate key use 'X KeySym'. it support single key or combined keys with `+` delimiter, for example : `Super_L+Shift_L+q`.
     * Standard  KeySym  names  are  obtained from X11/keysymdef.h by removing the XK_ prefix from each name.
 
 * simulate key sequence, use `keyseq ` prefix and continue with 'X KeySym', for example : `keyseq Control_L+g c`.
@@ -31,8 +31,18 @@ make
 
 * simulate mouse motion, by set `axis_as_mouse` to `1`. 
 
+## Usage
 
-Since I am a heavy user of i3wm, the default configuration set to:
+`-D` : to enable debug mode to help you find with joystick "key" should be mapped.
+
+`-n` : to ignore default configuration.
+
+`-c <config file name>` : to load another config file instead of `~/.config/enjoyrc`, useful for launching multiple instances to support multiple joystick devices.
+
+`-h` : to show help message.
+
+## Default configuration
+Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
 
 ```ini
 # joystick device
@@ -50,22 +60,22 @@ button_8=Super_L+End
 # button start of DevTerm
 button_9=Super_L+d
 # set it to 0 to use axis to simulate key/mouse event.
-axis_as_mouse=1
-axis_up=Up
-axis_down=Down
-axis_left=Left
-axis_right=Right
+axis0_as_mouse=1
+axis0_button0_up=Up
+axis0_bttton0_down=Down
+axis0_button1_left=Left
+axis0_button1_right=Right
 
 ```
 
-You can create your own config file as `~/.config/enjoyrc`.
+You can create your own config file such as `~/.config/enjoyrc` or `~/.config/<your config file>`.
 
 And, `enjoy`.
 
 ## TODO
 
-* Support verbose mode to found which joystick event generated and not bound.
+* ~~Support verbose mode to found which joystick event generated and not bound.~~
 
-* Support multiple axis on one joystick, maybe with `axis[n]_button[n]_up/down/left/right` keys.
+* ~~Support multiple axis on one joystick, maybe with `axis[n]_button[n]_up/down/left/right` keys.~~
 
-* Support multiple joysticks by multiple config files, can launch multiple instances.
+* ~~Support multiple joysticks by multiple config files, can launch multiple instances.~~

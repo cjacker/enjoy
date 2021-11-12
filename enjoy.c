@@ -289,10 +289,19 @@ void usage()
            "        By cjacker <cjacker@foxmail.com>\n\n"
            "Usage: enjoy [-D] [-n] [-h] [-c configfile]\n\n"
            "Args:\n"
-           "-D: debug mode, report joystick event name used in config file.\n"
-           "-n: no default configurations.\n"
-           "-c <configfile>: use '~/.config/<configfile>' as config file.\n"
-           "-h: show this message.\n\n"
+           " -D: debug mode, report joystick event name can be used in config file.\n"
+           " -n: no default configurations.\n"
+           " -c <configfile>: use '~/.config/<configfile>' as config file.\n"
+           " -h: show this message.\n\n"
+           "Config file format:\n"
+           " config file of enjoy use key-value format,\n"
+           " the key is the name of joystick event (Use '-D' to find out),\n"
+           " the value of key has below formats:\n"
+           "    1. X Keysym or Combined Keysym with '+' as delimiter, for example: Up, Control_L+Shift_L+q.\n"
+           "    2. Key sequence prefix with 'keyseq ', continue with a sequence of X Keysyms.\n"
+           "    3. Mouse button prefix with 'mouse_button ', continue with a number: 1/left, 2/middle, 3/right, 4/scrollup, 5/scrolldown\n"
+           "    4. Launch App prefix with 'exec ', continue with command and args\n"
+           "    5. Set 'axis<n>_as_mouse' to 1 will treate axis as mouse motion\n\n"
            "For more information, please refer to README.md\n");
     exit(0);
 }
