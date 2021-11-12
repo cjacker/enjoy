@@ -5,22 +5,6 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
-## Build
-
-`enjoy` almost have no dependencies but optinally use libx11 and libxtst to simulate mouse/key events:
-
-```
-sudo apt-get install libx11-dev libxtst-dev
-make
-sudo make install
-enjoy 
-```
-
-If you prefer uinput for better performance(need reboot after `make install`):
-```
-enjoy -i
-```
-
 ## Features
 
 `enjoy` support:
@@ -35,6 +19,18 @@ enjoy -i
 * launch application, with `exec ` prefix, for example : `exec st -D`.
 
 * simulate mouse motion, by set `axis_as_mouse` to `1`. 
+
+## Build and Install
+
+`enjoy` almost have no dependencies but optinally use libx11 and libxtst to simulate mouse/key events:
+
+```
+sudo apt-get install libx11-dev libxtst-dev
+make
+sudo make install
+udevadm control --reload-rules
+enjoy
+```
 
 ## Usage
 
