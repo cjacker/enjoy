@@ -6,6 +6,7 @@
 
 #include <linux/uinput.h>
 
+#include "uinput.h"
 
 void emit(int fd, int type, int code, int val)
 {
@@ -23,6 +24,35 @@ void emit(int fd, int type, int code, int val)
 }
 
 
+void fake_mouse_button_uinput(int fd, int button_number, int state)
+{
+    switch(button_number) {
+        case 1:
+            emit(fd, EV_KEY, BTN_LEFT, state);
+            emit(fd, EV_SYN, SYN_REPORT, 0);
+            break;
+        case 2:
+            emit(fd, EV_KEY, BTN_MIDDLE, state);
+            emit(fd, EV_SYN, SYN_REPORT, 0);
+            break;
+        case 3:
+            emit(fd, EV_KEY, BTN_RIGHT, state);
+            emit(fd, EV_SYN, SYN_REPORT, 0);
+            break;
+        case 4:
+            emit(fd, EV_KEY, BTN_FORWARD, state);
+            emit(fd, EV_SYN, SYN_REPORT, 0);
+            break;
+        case 5:
+            emit(fd, EV_KEY, BTN_BACK, state);
+            emit(fd, EV_SYN, SYN_REPORT, 0);
+            break;
+        default:
+            break;
+    }
+}
+
+
 int init_uinput()
 {
     struct uinput_setup usetup;
@@ -36,7 +66,7 @@ int init_uinput()
     ioctl(fd, UI_SET_EVBIT, EV_REL);
     ioctl(fd, UI_SET_RELBIT, REL_X);
     ioctl(fd, UI_SET_RELBIT, REL_Y);
-
+    int i;
     /* enable all keycodes support */
     for (i=0; i < 256; i++) { 
         ioctl(fd, UI_SET_KEYBIT, i); 

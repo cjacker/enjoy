@@ -1,6 +1,7 @@
 #ifndef UINPUT_H
 #define UINPUT_H
-void emit(int fd, int type, int code, int val);
 int init_uinput();
 void close_uinput(int fd);
+void emit(int fd, int type, int code, int val);
+void fake_mouse_button_uinput(int fd, int button_number, int state);
 #endif

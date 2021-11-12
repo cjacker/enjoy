@@ -31,7 +31,7 @@ Run:
 
 static int uinput_fd = -1;
 
-static int use_uinput_motion = 0;
+static int use_uinput = 0;
 
 char *argv0;
 
@@ -233,7 +233,10 @@ void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int b
     if(strncasecmp (value, "mouse_button ", 13) == 0) {
         value += 13;
         if(is_valid_number(value)) /* make sure 'value' is a 'number' */
-            fake_mouse_button(disp, atoi(value), state);
+            if(use_uinput)
+                fake_mouse_button_uinput(uinput_fd, atoi(value), state);
+            else
+                fake_mouse_button(disp, atoi(value), state);
     } else
         fake_key(disp, value, state);
 }
@@ -394,7 +397,7 @@ int main(int argc, char *argv[])
       debug_mode = 1;
       break;
     case 'i':
-      use_uinput_motion = 1;
+      use_uinput = 1;
       break;
     case 'n':
       no_default_config = 1;
@@ -471,7 +474,7 @@ int main(int argc, char *argv[])
                             /* restore move intervals.*/
                             motion_interval = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
-                            if(use_uinput_motion)
+                            if(use_uinput)
                                 pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
                             else
                                 pthread_create(&motion_thread_t, NULL, motion_thread, (void *)disp);
