@@ -86,6 +86,8 @@ And, `enjoy`.
 
 ## TODO
 
+* Finish uinput support and make X optional. after that, enjoy should work well with wayland.
+
 * ~~Support verbose mode to found which joystick event generated and not bound.~~
 
 * ~~Support multiple axis on one joystick, maybe with `axis[n]_button[n]_up/down/left/right` keys.~~
