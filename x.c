@@ -59,7 +59,7 @@ void fake_key_x(Display *disp, char *value, Bool state)
                 fprintf(stderr, "x: %s, %s, %d, %d\n", km->name, km->xkeyname, km->uinpcode, state);
             KeyCode kc = str2key(disp, km->xkeyname);
             if(kc == 0) {
-                fprintf(stderr, "Wrong keyname: %s\n", token);
+                fprintf(stderr, "Wrong keyname: %s\nPlease run 'enjoy -k'\n", token);
                 return;
             }
             XTestFakeKeyEvent (disp, kc, state, 0);
