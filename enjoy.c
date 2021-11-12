@@ -27,6 +27,7 @@ Run:
 #include "arg.h"
 
 #include "uinput.h"
+#include "keytable.h"
 
 
 static int uinput_fd = -1;
@@ -35,7 +36,7 @@ static int use_uinput = 0;
 
 char *argv0;
 
-static int debug_mode = 0;
+int debug_mode = 0;
 static int no_default_config = 0;
 
 static char * config_file = NULL;
@@ -128,10 +129,15 @@ void fake_key_sequence(Display *disp, char *value)
 
     char *end_str;
     char *token = strtok_r(keyseq, " ", &end_str);
-    struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000000  };
+    struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000  };
     while(token != NULL ) {
-        fake_key(disp, token, 1);
-        fake_key(disp, token, 0);
+        if(use_uinput) {
+            fake_key_uinput(uinput_fd, token, 1);
+            fake_key_uinput(uinput_fd, token, 0);
+        } else {
+            fake_key(disp, token, 1);
+            fake_key(disp, token, 0);
+        }
         nanosleep(&ts, NULL);
         token = strtok_r(NULL, " ", &end_str);
     }
@@ -238,7 +244,10 @@ void fake_button_event(Display *disp, Bool axis, int axis_n, int x, int y, int b
             else
                 fake_mouse_button(disp, atoi(value), state);
     } else
-        fake_key(disp, value, state);
+        if(use_uinput)
+            fake_key_uinput(uinput_fd, value, state);
+        else
+            fake_key(disp, value, state);
 }
 
 /* read joystick event, 0 success, -1 failed */

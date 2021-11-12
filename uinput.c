@@ -8,21 +8,50 @@
 
 #include "uinput.h"
 
+#include "keytable.h"
+
+extern int debug_mode;
+
 void emit(int fd, int type, int code, int val)
 {
    struct input_event ie;
+   memset(&ie, 0, sizeof(ie)); 
+   gettimeofday(&ie.time, NULL); 
 
    ie.type = type;
    ie.code = code;
    ie.value = val;
    /* timestamp values below are ignored */
-   ie.time.tv_sec = 0;
+/*   ie.time.tv_sec = 0;
    ie.time.tv_usec = 0;
-
+*/
    int ret = write(fd, &ie, sizeof(ie));
    return;
 }
 
+
+void fake_key_uinput(int fd, char *keyname, int state)
+{
+    char *keys = malloc(strlen(keyname)+1);
+    strcpy(keys, keyname);
+    char *end_token;
+    char *token = strtok_r(keys, "+", &end_token);
+    // loop through the string to extract all other tokens
+    while( token != NULL ) {
+        keymap *km = get_keymap_by_name(token);
+        if(km->name != NULL) {
+            if(debug_mode)
+                fprintf(stderr, "uinput: %s, %s, %d, %d\n", km->name, km->xkeyname, km->uinpcode, state);
+            emit(fd, EV_KEY, km->uinpcode, state);
+            emit(fd, EV_SYN, SYN_REPORT, 0);
+        }
+        free(km->name);
+        free(km->xkeyname);
+        free(km);
+        token = strtok_r(NULL, "+", &end_token);
+    }
+    free(keys);
+} 
 
 void fake_mouse_button_uinput(int fd, int button_number, int state)
 {
