@@ -61,3 +61,10 @@ You can create your own config file as `~/.config/enjoyrc`.
 
 And, `enjoy`.
 
+## TODO
+
+* Support verbose mode to found which joystick event generated and not bound.
+
+* Support multiple axis on one joystick, maybe with `axis[n]_button[n]_up/down/left/right` keys.
+
+* Support multiple joysticks by multiple config files, can launch multiple instances.

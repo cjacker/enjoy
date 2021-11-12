@@ -2,10 +2,10 @@
 Author: Cjacker <cjacker@foxmail.com>
 
 Description:
-Convert joystick events to mouse or key events.
+Map joystick events to mouse or key events.
 
 Compile:
-gcc -Os enjoy.c -o enjoy
+make
 
 Run:
 ./enjoy
