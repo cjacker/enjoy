@@ -276,7 +276,9 @@ void usage()
            "Usage: enjoy [-D] [-n] [-h] [-c configfile]\n\n"
            "Args:\n"
            " -D: debug mode, report joystick event name can be used in config file.\n"
+#ifdef WITH_X
            " -x: use Xtest instead of uinput to simulate events, slow.\n"
+#endif
            " -n: no default configurations.\n"
            " -c <configfile>: use '~/.config/<configfile>' as config file.\n"
            " -k: print 'keyname' can be used in config file.\n"
