@@ -31,13 +31,26 @@ int init_uinput()
         perror("open /dev/uinput failed:");
         exit(1);
     }
-    /* enable mouse button left and relative events */
-    ioctl(fd, UI_SET_EVBIT, EV_KEY);
-    ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
-    
+
+    ioctl(fd, UI_SET_EVBIT, EV_KEY); 
     ioctl(fd, UI_SET_EVBIT, EV_REL);
     ioctl(fd, UI_SET_RELBIT, REL_X);
     ioctl(fd, UI_SET_RELBIT, REL_Y);
+
+    /* enable all keycodes support */
+    for (i=0; i < 256; i++) { 
+        ioctl(fd, UI_SET_KEYBIT, i); 
+    } 
+  
+    /* enable all mouse buttons */ 
+    ioctl(fd, UI_SET_KEYBIT, BTN_MOUSE); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_TOUCH); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_MOUSE); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_LEFT); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_MIDDLE); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_FORWARD); 
+    ioctl(fd, UI_SET_KEYBIT, BTN_BACK); 
     
     memset(&usetup, 0, sizeof(usetup));
     usetup.id.bustype = BUS_USB;
