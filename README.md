@@ -19,16 +19,17 @@ make
 
 `enjoy` support:
 
-* simulate key use 'xlib keyname'. it support combined keys with `+`, for example : `Super_L+Shift_L+q`.
+* simulate key use 'X KeySym'. it support combined keys with `+` delimiter, for example : `Super_L+Shift_L+q`.
+    * Standard  KeySym  names  are  obtained from X11/keysymdef.h by removing the XK_ prefix from each name.
 
-* simulate key sequence, use `keyseq ` prefix and continue with xlib keynames, for example : `keyseq Control_L+g c`.
+* simulate key sequence, use `keyseq ` prefix and continue with 'X KeySym', for example : `keyseq Control_L+g c`.
 
-* simulate mouse button, use `mouse_button ` prefix, continue with a `button number`. 
+* simulate mouse button, use `mouse_button ` prefix, continue with a 'button number'. 
     * `1` = left button, `2` = middle button, `3` = right button, `4` = scroll up, `5` = scroll down.
 
-* launch application with `exec ` prefix, for example : `exec st -D`.
+* launch application, with `exec ` prefix, for example : `exec st -D`.
 
-* simulate mouse motion by set `axis_as_mouse` to `1`. 
+* simulate mouse motion, by set `axis_as_mouse` to `1`. 
 
 
 Since I am a heavy user of i3wm, the default configuration set to:
