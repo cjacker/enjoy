@@ -22,10 +22,9 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 ## Build and Install
 
-`enjoy` almost have no dependencies but optinally use libx11 and libxtst to simulate mouse/key events:
+`enjoy` have no dependencies:
 
 ```
-sudo apt-get install libx11-dev libxtst-dev
 make
 sudo make install
 udevadm control --reload-rules
@@ -38,7 +37,7 @@ enjoy
 
 `-n` : to ignore default configuration.
 
-`-x` : to use 'Xtest' instead of 'uinput' to simulate mouse motion, slow than uinput.
+~~`-x` : to use 'Xtest' instead of 'uinput' to simulate mouse motion, slow than uinput.~~
 
 `-k` : print out 'enjoy keyname' can be used in config file.
 
@@ -83,7 +82,7 @@ And, `enjoy`.
 
 ## TODO
 
-* Finish uinput support and make X optional. after that, enjoy should work well with wayland.
+* ~~Finish uinput support and make X optional. after that, enjoy should work well with wayland.~~
 
 * ~~Support verbose mode to found which joystick event generated and not bound.~~
 
