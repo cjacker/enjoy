@@ -320,6 +320,7 @@ void usage()
            "Usage: enjoy [-D] [-n] [-h] [-c configfile]\n\n"
            "Args:\n"
            " -D: debug mode, report joystick event name can be used in config file.\n"
+           " -i: use 'uinput' instead of XTest for mouse motion.\n"
            " -n: no default configurations.\n"
            " -c <configfile>: use '~/.config/<configfile>' as config file.\n"
            " -h: show this message.\n\n"

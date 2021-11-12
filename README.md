@@ -12,7 +12,13 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 ```
 sudo apt-get install libx11-dev libxtst-dev
 make
-./enjoy
+sudo make install
+enjoy 
+```
+
+If you prefer uinput for better performance(need reboot after `make install`):
+```
+enjoy -i
 ```
 
 ## Features
@@ -36,6 +42,8 @@ make
 `-D` : to enable debug mode to help you find with joystick "key" should be mapped.
 
 `-n` : to ignore default configuration.
+
+`-i` : to use 'uinput' instead of XTest to simulate mouse motion, better performance and experience.
 
 `-c <config file name>` : to load another config file instead of `~/.config/enjoyrc`, useful for launching multiple instances to support multiple joystick devices.
 
