@@ -249,25 +249,6 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
     return axis;
 }
 
-
-/* print out config */
-void print_cfg(struct cfg_struct *cfg)
-{
-    printf("device=%s\n", cfg_get(cfg, "device"));
-    printf("button_0=%s\n", cfg_get(cfg, "button_0"));
-    printf("button_1=%s\n", cfg_get(cfg, "button_1"));
-    printf("button_2=%s\n", cfg_get(cfg, "button_2"));
-    printf("button_3=%s\n", cfg_get(cfg, "button_3"));
-    printf("button_8=%s\n", cfg_get(cfg, "button_8"));
-    printf("button_9=%s\n", cfg_get(cfg, "button_9"));
-    printf("axis0_as_mouse=%d\n", atoi(cfg_get(cfg, "axis0_as_mouse") ? cfg_get(cfg, "axis0_as_mouse") : "0"));
-    printf("axis0_button1_up=%s\n", cfg_get(cfg, "axis0_button1_up"));
-    printf("axis0_button1_down=%s\n", cfg_get(cfg, "axis0_button1_down"));
-    printf("axis0_button0_left=%s\n", cfg_get(cfg, "axis0_button0_left"));
-    printf("axis0_button0_right=%s\n", cfg_get(cfg, "axis0_button0_right"));
-}
-
-
 /* show help infomation */
 void usage()
 {
@@ -288,8 +269,10 @@ void usage()
            " the key is the name of joystick event (use debug mode to find out),\n"
            " the value of key has below formats:\n"
            "    1. Keyname or combined keyname with '+' as delimiter, for example: up, control_l+shift_l+q.\n"
-           "    2. Key sequence prefix with 'keyseq ', continue with a sequence of keyname.\n"
-           "    3. Mouse button prefix with 'mouse_button ', continue with a number: 1/left, 2/middle, 3/right, 4/scrollup, 5/scrolldown\n"
+           "       - Use '-k' to find keynames enjoy supported.\n"
+           "    2. Key sequence prefix with 'keyseq ', continue with a sequence of keyname seperate by ' '.\n"
+           "    3. Mouse button prefix with 'mouse_button ', continue with button number.\n"
+           "       - 1/left, 2/middle, 3/right, 4/scrollup, 5/scrolldown\n"
            "    4. Launch App prefix with 'exec ', continue with command and args\n"
            "    5. Set 'axis<n>_as_mouse' to 1 will treate axis as mouse motion\n\n"
            "For more information, please refer to README.md\n");
