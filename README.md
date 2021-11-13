@@ -1,7 +1,7 @@
 # enjoy
 ## map joystick events to mouse/key events
 
-Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to map joystick events to mouse click/scroll/motion or key events, or use joystick buttons to launch applications. It should work with other joysticks but not tested.
+Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to map joystick events to mouse or key events. It should work with other joysticks but not tested.
 
 ![DevTerm](https://github.com/cjacker/enjoy/raw/main/DevTerm.png)
 
@@ -9,18 +9,22 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 `enjoy` support: 
 
-* support both x or wayland, even console. since `enjoy` use 'uinput' to simulate key/mouse events.
+* support both X and wayland, even console. since `enjoy` use kernel uinput to simulate key/mouse events.
 
-* simulate key use 'keyname'. it support single key or combined keys with `+` delimiter, for example : `super_l+shift_l+q`.
+* simulate key event  use 'keyname'. support single or combined keys with `+` delimiter, for example : `super_l+shift_l+q`.
 
-* simulate key sequence, use `keyseq ` prefix and continue with 'keyname', for example : `keyseq control_l+g c`.
+* simulate key sequence use `keyseq ` prefix and continue with 'keyname', for example : `keyseq control_l+g c`.
 
 * simulate mouse button, use `mouse_button ` prefix, continue with a 'button number'. 
-    * `1` = left button, `2` = middle button, `3` = right button, `4` = scroll up, `5` = scroll down.
+    * `1` = left button
+    * `2` = middle button
+    * `3` = right button
+    * `4` = scroll up
+    * `5` = scroll down.
 
-* launch application, with `exec ` prefix, for example : `exec st -D`.
+* launch application with `exec ` prefix, for example : `exec st -D`.
 
-* simulate mouse motion, by set `axis_as_mouse` to `1`. 
+* simulate mouse motion by set `axis_as_mouse` to `1`. 
 
 ## Build and Install
 
@@ -29,27 +33,36 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 ```
 make
 sudo make install
+# need reboot or reload udev rules
+# to set correct permission of /dev/uinput.
 udevadm control --reload-rules
 enjoy
 ```
 
+If you want to build with Xtst support(maybe slow performance than uinput), use:
+
+```
+make withx
+enjoy-with-x -x
+```
+
 ## Usage
 
-`-D` : to enable debug mode to help you find which joystick "key" should be mapped.
+`-D` : enable debug mode. very helpful to find out which joystick "key" should be mapped.
 
-`-n` : to ignore default configuration.
-
-~~`-x` : to use 'Xtest' instead of 'uinput' to simulate mouse motion, slow than uinput.~~
+`-n` : ignore default configuration.
 
 `-k` : print out 'enjoy keyname' can be used in config file.
 
-`-c <config file name>` : to load another config file instead of `~/.config/enjoyrc`, useful for launching multiple instances to support multiple joystick devices.
+`-c <config file name>` : load another config file instead of `~/.config/enjoyrc`. 
 
-`-h` : to show help message.
+`-h` : show help message.
 
-For more than one joysticks:
+For more than one joysticks, You may need to create multiple config files under `~/.config` and launch multiple `enjoy` instance.
 
-You may need to create multiple config files under `~/.config` and launch multiple `enjoy` instance.
+If you build enjoy with Xtest support:
+
+`-x` : to use 'Xtest' instead of 'uinput' to simulate mouse/key events.
 
 ## Default configuration
 Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
