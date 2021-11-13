@@ -5,6 +5,7 @@
 
 #include "keytable.h"
 
+/* to support both Kernel and X keyname/keycode. */
 keymap keytable[] = {
 {"escape",      "Escape",       KEY_ESC},
 {"f1",          "F1",           KEY_F1},
@@ -112,9 +113,11 @@ keymap keytable[] = {
 {NULL,      NULL,       0},
 };
 
+/* find x keyname or kernel keycode by name 
+ * not good, but enough.
+ */
 keymap* get_keymap_by_name(char *name)
 {
-
     keymap *km = malloc(sizeof(keymap));
     km->name = NULL;
     km->xkeyname = NULL;
@@ -123,7 +126,6 @@ keymap* get_keymap_by_name(char *name)
     int i = 0;
     while(keytable[i].name != NULL) {
         if(!strcmp(keytable[i].name, name)) {
-            //fprintf(stderr, "get_keymap_by_name: %s, %s, %d\n", keytable[i].name, keytable[i].xkeyname, keytable[i].uinpcode);
             km->name=strdup(keytable[i].name);
             km->xkeyname=strdup(keytable[i].xkeyname);
             km->uinpcode = keytable[i].uinpcode;
@@ -136,11 +138,11 @@ keymap* get_keymap_by_name(char *name)
 
 void print_keytable()
 {
-	printf("%-15s|%-22s|%-15s\n", "enjoy keyname", "x keyname", "uinput code");
+    printf("%-15s|%-22s|%-15s\n", "enjoy keyname", "x keyname", "uinput code");
     printf("--------------------------------------------------\n");
     int i = 0;
     while(keytable[i].name != NULL) {
-		printf("%-15s|%-22s|%-15d\n", keytable[i].name, keytable[i].xkeyname, keytable[i].uinpcode);
+        printf("%-15s|%-22s|%-15d\n", keytable[i].name, keytable[i].xkeyname, keytable[i].uinpcode);
         i++;
     }
 }
