@@ -18,6 +18,7 @@ Run:
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include <linux/joystick.h>
 
@@ -64,6 +65,15 @@ int motion_interval = MOTION_INTERVAL_INIT;
 
 int motion_thread_created = 0;
 pthread_t motion_thread_t;
+
+static int should_pause = 0;
+void sig_handler(int signum)
+{
+    if(signum ==  SIGUSR1)
+        should_pause = 1;
+    else
+        should_pause = 0;
+}
 
 /* support key sequence, for example: "Control_L+g c" */
 void fake_key_sequence(char *value)
@@ -275,6 +285,10 @@ void usage()
            "       - 1/left, 2/middle, 3/right, 4/scrollup, 5/scrolldown\n"
            "    4. Launch App prefix with 'exec ', continue with command and args\n"
            "    5. Set 'axis<n>_as_mouse' to 1 will treate axis as mouse motion\n\n"
+           "Signal handler:\n"
+           " enjoy listen 'SIGUSR1' and 'SIGUSR2' to pause and resume mapping joystick events,\n"
+           " If you want to play game with joystick, run 'killall -SIGUSR1 enjoy' to pause enjoy and \n"
+           " 'killall -SIGUSR2 enjoy' to resume the event simulation after game.\n\n"
            "For more information, please refer to README.md\n");
     exit(0);
 }
@@ -374,9 +388,18 @@ int main(int argc, char *argv[])
 #ifdef WITH_X
     disp = init_x();
 #endif
+	/* Register signal handler */
+	signal(SIGUSR1, sig_handler);
+	signal(SIGUSR2, sig_handler);
+
     /* This loop will exit if the controller is unplugged. */
     while (read_event(js, &event) == 0)
     {
+        if(should_pause) {
+            usleep(1000000);
+            continue;
+        }
+        
         switch (event.type)
         {
             case JS_EVENT_BUTTON:

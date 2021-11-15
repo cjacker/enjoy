@@ -26,6 +26,8 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 
 * simulate mouse motion by set `axis_as_mouse` to `1`. 
 
+* signal handling to pause and resume the event mapping when you want to play game.
+
 ## Build and Install
 
 `enjoy` have no dependencies:
@@ -63,6 +65,9 @@ For more than one joysticks, You may need to create multiple config files under 
 If you build enjoy with Xtest support:
 
 `-x` : to use 'Xtest' instead of 'uinput' to simulate mouse/key events.
+
+if you want to play game, please run 'killall -SIGUSR1 enjoy' to pause the event mapping,
+after game, run 'killall -SIGUSR2 enjoy' to resume it.
 
 ## Default configuration
 Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
