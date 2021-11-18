@@ -1,3 +1,0 @@
-# replace game group by a valid group on your system
-# set correct permission for /dev/uinput
-KERNEL=="uinput", GROUP="video", MODE="0660", OPTIONS+="static_node=uinput"

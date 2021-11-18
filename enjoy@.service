@@ -1,0 +1,12 @@
+[Unit]
+Description=Map joystick events to key/mouse events
+Wants=systemd-udev-trigger.service systemd-udev-settle.service
+After=systemd-udev-trigger.service systemd-udev-settle.service
+
+[Service]
+Type=forking
+PIDFile=/run/enjoy_%i.pid
+ExecStart=/usr/bin/enjoy -c /etc/enjoy/%i
+
+[Install]
+WantedBy=multi-user.target

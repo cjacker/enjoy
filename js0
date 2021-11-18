@@ -1,0 +1,14 @@
+#default config file for devterm.
+device=/dev/input/js0
+button_0=super_l
+button_1=mouse_button 3
+button_2=mouse_button 1
+button_3=exec xmame-launcher 
+button_8=super_l+end
+button_9=super_l+d
+axis_as_mouse=1
+axis_up=up
+axis_down=down
+axis_left=left
+axis_right=right
+

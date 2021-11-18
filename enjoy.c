@@ -10,6 +10,7 @@ make
 Run:
 ./enjoy
 */
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,28 +29,21 @@ Run:
 #include "keytable.h"
 
 #include "uinput.h"
+#include "daemon.h"
 
-#ifdef WITH_X
-#include "x.h"
-#endif
+int pid_fd;
+static int running = 0;
 
-static int use_x = 0;
+static char *pid_filename = NULL;
+
+static char * config_filename = NULL;
+/* global config */
+struct cfg_struct *cfg;
 
 int uinput_fd = -1;
-
-#ifdef WITH_X
-Display *disp = NULL;
-#endif
-
 int debug_mode = 0;
 
 char *argv0;
-
-static int no_default_config = 0;
-static char * config_file = NULL;
-
-/* global config */
-struct cfg_struct *cfg;
 
 int axis_up_press = 0;
 int axis_down_press = 0;
@@ -66,13 +60,22 @@ int motion_interval = MOTION_INTERVAL_INIT;
 int motion_thread_created = 0;
 pthread_t motion_thread_t;
 
-static int should_pause = 0;
-void sig_handler(int signum)
+void signal_handler(int sig)
 {
-    if(signum ==  SIGUSR1)
-        should_pause = 1;
-    else
-        should_pause = 0;
+    if (sig == SIGINT) {
+        /* Unlock and close lockfile */
+        if (pid_fd != -1) {
+            lockf(pid_fd, F_ULOCK, 0);
+            close(pid_fd);
+        }
+        /* Try to delete lockfile */
+        if (pid_filename != NULL) {
+            unlink(pid_filename);
+        }
+        running = 0;
+        /* Reset signal handling to default behavior */
+        signal(SIGINT, SIG_DFL);
+    }
 }
 
 /* support key sequence, for example: "Control_L+g c" */
@@ -85,15 +88,8 @@ void fake_key_sequence(char *value)
     char *token = strtok_r(keyseq, " ", &end_str);
     struct timespec ts = { .tv_sec = 0, .tv_nsec = 10000  };
     while(token != NULL ) {
-        if(!use_x) {
-            fake_key_uinput(uinput_fd, token, 1);
-            fake_key_uinput(uinput_fd, token, 0);
-        } else {
-#ifdef WITH_X
-            fake_key_x(disp, token, 1);
-            fake_key_x(disp, token, 0);
-#endif
-        }
+        fake_key_uinput(uinput_fd, token, 1);
+        fake_key_uinput(uinput_fd, token, 0);
         nanosleep(&ts, NULL);
         token = strtok_r(NULL, " ", &end_str);
     }
@@ -172,7 +168,9 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
         }
         return;
     }
-  
+
+/* since enjoy is system level daemon, exec can not and should not supported anymore */
+#if 0 
     /* exec */    
     if(strncasecmp (value, "exec ", 5) == 0) {
         /* run cmd only on key press */
@@ -184,24 +182,14 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
         } 
         return;    
     }
-
+#endif
     /* 'mouse_button <n>': value + 13 is 'n' */
     if(strncasecmp (value, "mouse_button ", 13) == 0) {
         value += 13;
         if(is_valid_number(value)) /* make sure 'value' is a 'number' */
-            if(!use_x)
-                fake_mouse_button_uinput(uinput_fd, atoi(value), state);
-#ifdef WITH_X
-            else
-                fake_mouse_button_x(disp, atoi(value), state);
-#endif
+            fake_mouse_button_uinput(uinput_fd, atoi(value), state);
     } else
-        if(!use_x)
-            fake_key_uinput(uinput_fd, value, state);
-#ifdef WITH_X
-        else
-            fake_key_x(disp, value, state);
-#endif
+         fake_key_uinput(uinput_fd, value, state);
 }
 
 /* read joystick event, 0 success, -1 failed */
@@ -267,9 +255,6 @@ void usage()
            "Usage: enjoy [-D] [-n] [-h] [-c configfile]\n\n"
            "Args:\n"
            " -D: debug mode, report joystick event name can be used in config file.\n"
-#ifdef WITH_X
-           " -x: use Xtest instead of uinput to simulate events, slow.\n"
-#endif
            " -n: no default configurations.\n"
            " -c <configfile>: use '~/.config/<configfile>' as config file.\n"
            " -k: print 'keyname' can be used in config file.\n"
@@ -293,39 +278,6 @@ void usage()
     exit(0);
 }
 
-void load_user_cfg(struct cfg_struct *cfg, char *config_file_name)
-{
-    char config_file[64];
-
-    if(!config_file_name)
-        sprintf(config_file, "%s/.config/enjoyrc", getenv("HOME"));
-    else
-        sprintf(config_file, "%s/.config/%s", getenv("HOME"), config_file_name);
-
-    if(access(config_file, R_OK) == 0) {
-        cfg_load(cfg, config_file);
-    } else {
-        if(config_file_name)
-            fprintf(stderr, "%s/.config/%s not exists\n",  getenv("HOME"), config_file_name);
-    }
-}
-
-void init_default_cfg(struct cfg_struct *cfg)
-{
-   cfg_set(cfg, "device", "/dev/input/js0");
-   cfg_set(cfg, "axis0_as_mouse", "1");
-   cfg_set(cfg, "button_0", "super_l");
-   cfg_set(cfg, "button_1", "mouse_button 3");
-   cfg_set(cfg, "button_2", "mouse_button 1");
-   cfg_set(cfg, "button_3", "control_l");
-   cfg_set(cfg, "button_8", "super_l+end");
-   cfg_set(cfg, "button_9", "super_l+d");
-   cfg_set(cfg, "axis0_button1_up", "up");
-   cfg_set(cfg, "axis0_button1_down", "down");
-   cfg_set(cfg, "axis0_button0_left", "left");
-   cfg_set(cfg, "axis0_button0_right", "right");
-}
-
 int main(int argc, char *argv[])
 {
     const char *device;
@@ -334,22 +286,16 @@ int main(int argc, char *argv[])
     struct axis_state axes[3] = {0};
     size_t axis;
 
-
     /* process arguments */
     ARGBEGIN {
     case 'D':
       debug_mode = 1;
       break;
-#ifdef WITH_X
-    case 'x':
-      use_x = 1;
-      break;
-#endif
-    case 'n':
-      no_default_config = 1;
+    case 'p':
+      pid_filename = strdup(EARGF(usage()));
       break;
     case 'c':
-      config_file = EARGF(usage());
+      config_filename = EARGF(usage());
       break;
     case 'h':
       usage();
@@ -366,15 +312,37 @@ int main(int argc, char *argv[])
     /* init config file; */
     cfg = cfg_init();
 
-
-    /* init default configuration */
-    if(!no_default_config)
-        init_default_cfg(cfg);
-
-    /* load user configuration */
-    load_user_cfg(cfg, config_file);
+    if(config_filename && access(config_filename, R_OK) == 0) {
+        cfg_load(cfg, config_filename);
+    } else {
+        fprintf(stderr, "please specify correct config file.\n");
+	exit(EXIT_FAILURE);
+    }
 
     device = cfg_get(cfg, "device");
+ 
+    if(access(device, R_OK) != 0) {
+        fprintf(stderr, "wrong device in config file: '%s'\n", device);
+        exit(EXIT_FAILURE);
+    }
+
+    if(pid_filename == NULL) {
+    	pid_filename = malloc(256);
+    	sprintf(pid_filename, "/run/enjoy_%s.pid", basename(config_filename));
+    }
+
+    if(access(pid_filename, R_OK) == 0) {
+        fprintf(stderr, "enjoy already running? pid file exists: %s\n", pid_filename);
+	exit(EXIT_FAILURE);
+    }
+/*
+    if(access(pid_filename, W_OK) != 0) {
+        fprintf(stderr, "no permission to write to pid file: '%s'\n", pid_filename);
+        exit(EXIT_FAILURE);
+    }
+*/
+    if(!debug_mode)
+        daemonize(pid_filename);
 
     js = open(device, O_RDONLY);
 
@@ -385,21 +353,13 @@ int main(int argc, char *argv[])
 
     uinput_fd = init_uinput();
 
-#ifdef WITH_X
-    disp = init_x();
-#endif
-	/* Register signal handler */
-	signal(SIGUSR1, sig_handler);
-	signal(SIGUSR2, sig_handler);
+    /* Register signal handler */
+
+    signal(SIGINT, signal_handler);
 
     /* This loop will exit if the controller is unplugged. */
     while (read_event(js, &event) == 0)
     {
-        if(should_pause) {
-            usleep(1000000);
-            continue;
-        }
-        
         switch (event.type)
         {
             case JS_EVENT_BUTTON:
@@ -441,12 +401,7 @@ int main(int argc, char *argv[])
                             /* restore move intervals.*/
                             motion_interval = MOTION_INTERVAL_INIT;
                         } else if(!motion_thread_created) {
-                            if(!use_x)
-                                pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
-#ifdef WITH_X
-                            else
-                                pthread_create(&motion_thread_t, NULL, motion_thread_x, (void *)disp);
-#endif
+                            pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
                             motion_thread_created = 1;
                         }
                     }
@@ -458,12 +413,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    free(pid_filename);
     cfg_free(cfg);
     close(js);
-#ifdef WITH_X
-    if(disp)
-        close_x(disp); 
-#endif
     if(uinput_fd != -1)
         close_uinput(uinput_fd);
     return 0;
