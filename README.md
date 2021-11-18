@@ -102,6 +102,10 @@ And, `enjoy`.
 
 ## TODO
 
+* Conver it to a daemon and run only one instance, it should not be a user specific process.
+
+* Add a control interface, maybe via unix domain socket to suspend and resume, consider to use epoll to handle multiple fd events.
+
 * ~~Finish uinput support and make X optional. after that, enjoy should work well with wayland.~~
 
 * ~~Support verbose mode to found which joystick event generated and not bound.~~
