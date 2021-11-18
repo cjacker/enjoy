@@ -10,6 +10,7 @@ install:
 	install -D -m0644 js0 $(DESTDIR)/etc/enjoy/	
 	mkdir -p $(DESTDIR)$(PREFIX)/bin/
 	install -D -m0755 src/enjoy $(DESTDIR)$(PREFIX)/bin
+	install -D -m0755 src/enjoyctl $(DESTDIR)$(PREFIX)/bin
 
 clean:
 	make clean -C src

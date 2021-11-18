@@ -3,45 +3,47 @@ Author: Cjacker <cjacker@foxmail.com>
 
 Description:
 Map joystick events to mouse or key events.
-
-Compile:
-make
-
-Run:
-./enjoy
 */
-#define _GNU_SOURCE
 
+
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
 #include <signal.h>
-
 #include <linux/joystick.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <netdb.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include "cfg_parse.h"
 #include "arg.h"
-
 #include "keytable.h"
-
 #include "uinput.h"
 #include "daemon.h"
 
+#define MAXEVENTS 64 
+
 int pid_fd;
-static int running = 0;
+static int running = 1;
 
 static char *pid_filename = NULL;
-
 static char * config_filename = NULL;
 /* global config */
 struct cfg_struct *cfg;
 
 int uinput_fd = -1;
 int debug_mode = 0;
+
+static int suspend = 0;
 
 char *argv0;
 
@@ -169,7 +171,8 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
         return;
     }
 
-/* since enjoy is system level daemon, exec can not and should not supported anymore */
+/* since enjoy is system level daemon, 
+   exec can not and should not supported anymore */
 #if 0 
     /* exec */    
     if(strncasecmp (value, "exec ", 5) == 0) {
@@ -250,13 +253,13 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
 /* show help infomation */
 void usage()
 {
-    printf("enjoy - Read joystick events and convert to mouse/key event\n"
+    printf("enjoy - map joystick events and convert to mouse/key event\n"
            "        By cjacker <cjacker@foxmail.com>\n\n"
-           "Usage: enjoy [-D] [-n] [-h] [-c configfile]\n\n"
+           "Usage: enjoy [-D] [-h] [-k] [-c configfile] [-p pidfile]\n\n"
            "Args:\n"
-           " -D: debug mode, report joystick event name can be used in config file.\n"
-           " -n: no default configurations.\n"
-           " -c <configfile>: use '~/.config/<configfile>' as config file.\n"
+           " -D: debug mode.\n"
+           " -c <configfile> : specify config file.\n"
+           " -p <pidfile> : specify pid file.\n"
            " -k: print 'keyname' can be used in config file.\n"
            " -h: show this message.\n\n"
            "Config file format:\n"
@@ -270,18 +273,49 @@ void usage()
            "       - 1/left, 2/middle, 3/right, 4/scrollup, 5/scrolldown\n"
            "    4. Launch App prefix with 'exec ', continue with command and args\n"
            "    5. Set 'axis<n>_as_mouse' to 1 will treate axis as mouse motion\n\n"
-           "Signal handler:\n"
-           " enjoy listen 'SIGUSR1' and 'SIGUSR2' to pause and resume mapping joystick events,\n"
-           " If you want to play game with joystick, run 'killall -SIGUSR1 enjoy' to pause enjoy and \n"
-           " 'killall -SIGUSR2 enjoy' to resume the event simulation after game.\n\n"
            "For more information, please refer to README.md\n");
     exit(0);
 }
 
+int init_ctl_socket(char *sock_path)
+{
+    int fd;
+    int len;
+    struct sockaddr_un local;
+
+    if((fd = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
+    {
+        perror("Error creating server socket");
+        exit(1);
+    }
+
+    local.sun_family = AF_UNIX;
+    strcpy(local.sun_path, sock_path);
+    unlink(local.sun_path);
+    len = strlen(local.sun_path) + sizeof(local.sun_family);
+    if(bind(fd, (struct sockaddr *)&local, len) == -1)
+    {
+        perror("binding");
+        exit(1);
+    }
+
+    return fd;
+}
+
+
 int main(int argc, char *argv[])
 {
+    int ctl_sock_fd;
+    int joystick_fd;
+    int epoll_fd;
+    struct epoll_event ep_sevent;
+    struct epoll_event ep_jevent;
+    struct epoll_event *ep_events;
+
+    int ret;
+
     const char *device;
-    int js;
+
     struct js_event event;
     struct axis_state axes[3] = {0};
     size_t axis;
@@ -316,7 +350,7 @@ int main(int argc, char *argv[])
         cfg_load(cfg, config_filename);
     } else {
         fprintf(stderr, "please specify correct config file.\n");
-	exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     device = cfg_get(cfg, "device");
@@ -326,97 +360,161 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+   /* force config_filename equal to device filename. */
+   if(strcmp(basename(config_filename), basename(device))) {
+        fprintf(stderr, "wrong config filename: '%s', should be '%s'\n", config_filename, basename(device));
+        exit(EXIT_FAILURE);
+   }
+
     if(pid_filename == NULL) {
-    	pid_filename = malloc(256);
-    	sprintf(pid_filename, "/run/enjoy_%s.pid", basename(config_filename));
+    pid_filename = malloc(256);
+    sprintf(pid_filename, "/run/enjoy_%s.pid", basename(config_filename));
     }
 
     if(access(pid_filename, R_OK) == 0) {
         fprintf(stderr, "enjoy already running? pid file exists: %s\n", pid_filename);
-	exit(EXIT_FAILURE);
-    }
-/*
-    if(access(pid_filename, W_OK) != 0) {
-        fprintf(stderr, "no permission to write to pid file: '%s'\n", pid_filename);
         exit(EXIT_FAILURE);
     }
-*/
+
     if(!debug_mode)
         daemonize(pid_filename);
 
-    js = open(device, O_RDONLY);
-
-    if (js == -1){
-        perror("Could not open joystick");
-        exit(1);
-    }
-
-    uinput_fd = init_uinput();
-
     /* Register signal handler */
-
     signal(SIGINT, signal_handler);
 
-    /* This loop will exit if the controller is unplugged. */
-    while (read_event(js, &event) == 0)
-    {
-        switch (event.type)
-        {
-            case JS_EVENT_BUTTON:
-                fake_button_event(0, -1, 0, 0, event.number, event.value);
-                break;
-            case JS_EVENT_AXIS:
-                axis = get_axis_state(&event, axes);
-                if (axis < 3) {
-                    if(debug_mode)
-                        fprintf(stderr, "Axis %zu button %d at (%6d, %6d)\n", axis, event.number,  axes[axis].x, axes[axis].y);
-                     
-                    /* buttons will generate AXIS event too, ignore it. */
-                    if(abs(axes[axis].x) == 1 || abs(axes[axis].y) == 1)
-                        break;
+    joystick_fd = open(device, O_RDONLY);
+    if (joystick_fd == -1){
+        perror("Could not open joystick");
+        exit(EXIT_FAILURE);
+    }
 
-                    char axis_as_mouse_key[20];
-                    sprintf(axis_as_mouse_key, "axis%ld_as_mouse", axis);
-                    /* null to 0. */
-                    if(!(atoi(cfg_get(cfg, axis_as_mouse_key) ? cfg_get(cfg, axis_as_mouse_key) : "0"))) {
-                        if(axes[axis].x != 0 || axes[axis].y != 0)
-                            fake_button_event(1, axis, axes[axis].x, axes[axis].y, event.number, 1);
-                        if(axes[axis].x == 0 && axes[axis].y == 0) /* release */
-                        {
-                            if(axis_up_press)
-                                fake_button_event(1, axis, 0, -32767, event.number, 0);
-                            if(axis_down_press)
-                                fake_button_event(1, axis, 0, 32767, event.number, 0);
-                            if(axis_left_press) 
-                                fake_button_event(1, axis, -32767, 0, event.number, 0);
-                            if(axis_right_press)
-                                fake_button_event(1, axis, 32767, 0, event.number, 0);
+    char *sock_path = malloc(256);
+    sprintf(sock_path, "/tmp/enjoy_%s.socket", basename(config_filename)); 
+    ctl_sock_fd = init_ctl_socket(sock_path);
+    chmod(sock_path, 0666);
+
+    uinput_fd = init_uinput();
+    if (uinput_fd == -1){
+        perror("Could not open uinput");
+        exit(EXIT_FAILURE);
+    }
+
+
+    epoll_fd = epoll_create1 (0);
+    if (epoll_fd == -1) {
+        perror ("epoll_create");
+        exit(EXIT_FAILURE);
+    }
+
+
+    ep_sevent.data.fd = ctl_sock_fd;
+    ep_sevent.events = EPOLLIN;
+    ret = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, ctl_sock_fd, &ep_sevent);
+    if (ret == -1) {
+        perror ("epoll_ctl");
+        abort ();
+    }
+ 
+    ep_jevent.data.fd = joystick_fd;
+    ep_jevent.events = EPOLLIN;
+    ret = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, joystick_fd, &ep_jevent);
+    if (ret == -1) {
+        perror ("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
+
+    /* Buffer where events are returned */
+    ep_events = calloc (MAXEVENTS, sizeof(struct epoll_event));
+
+    /* The event loop */
+    while (running) {
+        int n, i;
+        n = epoll_wait (epoll_fd, ep_events, MAXEVENTS, -1);
+        for (i = 0; i < n; i++){
+            if ((ep_events[i].events & EPOLLERR) ||
+                (ep_events[i].events & EPOLLHUP) ||
+                (!(ep_events[i].events & EPOLLIN))) {
+                /* An error has occured on this fd, or the socket is not
+                   ready for reading (why were we notified then?) */
+                close (ep_events[i].data.fd);
+                continue;
+            } else if (ctl_sock_fd == ep_events[i].data.fd) {
+                char buff[16]; 
+                struct sockaddr_un from;
+                socklen_t fromlen = sizeof(from);
+                recvfrom(ep_events[i].data.fd, buff, 16, 0, (struct sockaddr *)&from, &fromlen);
+                if(!strcmp(buff, "suspend"))
+                        suspend = 1;
+                else if(!strcmp(buff, "toggle"))
+                        suspend = !suspend;
+                else
+                        suspend = 0;
+            } else if (joystick_fd == ep_events[i].data.fd) {
+                read_event(ep_events[i].data.fd, &event);
+                if(suspend)
+                    continue;
+                switch (event.type) {
+                    case JS_EVENT_BUTTON:
+                        fake_button_event(0, -1, 0, 0, event.number, event.value);
+                        break;
+                    case JS_EVENT_AXIS:
+                        axis = get_axis_state(&event, axes);
+                        if (axis < 3) {
+                            if(debug_mode)
+                                fprintf(stderr, "Axis %zu button %d at (%6d, %6d)\n", 
+                                        axis, event.number,  axes[axis].x, axes[axis].y);
+                             
+                            /* buttons will generate AXIS event too, ignore it. */
+                            if(abs(axes[axis].x) == 1 || abs(axes[axis].y) == 1)
+                                break;
+
+                            char axis_as_mouse_key[20];
+                            sprintf(axis_as_mouse_key, "axis%ld_as_mouse", axis);
+                            /* null to 0. */
+                            if(!(atoi(cfg_get(cfg, axis_as_mouse_key) ? cfg_get(cfg, axis_as_mouse_key) : "0"))) {
+                                if(axes[axis].x != 0 || axes[axis].y != 0)
+                                    fake_button_event(1, axis, axes[axis].x, axes[axis].y, event.number, 1);
+                                if(axes[axis].x == 0 && axes[axis].y == 0) /* release */
+                                {
+                                    if(axis_up_press)
+                                        fake_button_event(1, axis, 0, -32767, event.number, 0);
+                                    if(axis_down_press)
+                                        fake_button_event(1, axis, 0, 32767, event.number, 0);
+                                    if(axis_left_press) 
+                                        fake_button_event(1, axis, -32767, 0, event.number, 0);
+                                    if(axis_right_press)
+                                        fake_button_event(1, axis, 32767, 0, event.number, 0);
+                                }
+                            } else {
+                                axis_x_direction = axes[axis].x==0 ? 0 : -(axes[axis].x < 0) | 1; /*convert it to -1, 0, 1 */
+                                axis_y_direction = axes[axis].y==0 ? 0 : -(axes[axis].y < 0) | 1; /*convert it to -1, 0, 1 */
+                                if(axes[axis].x == 0 && axes[axis].y == 0) { 
+                                    pthread_join(motion_thread_t, NULL);
+                                    motion_thread_created = 0;
+                                    /* restore move intervals.*/
+                                    motion_interval = MOTION_INTERVAL_INIT;
+                                } else if(!motion_thread_created) {
+                                    pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
+                                    motion_thread_created = 1;
+                                }
+                            }
                         }
-                    } else {
-                        axis_x_direction = axes[axis].x==0 ? 0 : -(axes[axis].x < 0) | 1; /*convert it to -1, 0, 1 */
-                        axis_y_direction = axes[axis].y==0 ? 0 : -(axes[axis].y < 0) | 1; /*convert it to -1, 0, 1 */
-                        if(axes[axis].x == 0 && axes[axis].y == 0) { 
-                            pthread_join(motion_thread_t, NULL);
-                            motion_thread_created = 0;
-                            /* restore move intervals.*/
-                            motion_interval = MOTION_INTERVAL_INIT;
-                        } else if(!motion_thread_created) {
-                            pthread_create(&motion_thread_t, NULL, motion_thread_uinput, NULL);
-                            motion_thread_created = 1;
-                        }
-                    }
-                }
-                break;
-            default:
-                /* Ignore init events. */
-                break;
+                        break;
+                    default:
+                        /* Ignore init events. */
+                        break;
+                 }
+                 continue;
+            } 
         }
     }
 
     free(pid_filename);
+    free(ep_events);
     cfg_free(cfg);
-    close(js);
-    if(uinput_fd != -1)
-        close_uinput(uinput_fd);
-    return 0;
+    close(joystick_fd);
+    close(ctl_sock_fd);
+    close_uinput(uinput_fd);
+
+    return EXIT_SUCCESS;
 }

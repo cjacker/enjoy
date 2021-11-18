@@ -13,6 +13,7 @@ void daemonize(char * pid_file_name)
 {
     pid_t pid = 0;
     int fd;
+    int ret;
 
     /* Fork off the parent process */
     pid = fork();
@@ -53,8 +54,10 @@ void daemonize(char * pid_file_name)
 
     /* Change the working directory to the root directory */
     /* or another appropriated directory */
-    chdir("/");
-
+    ret = chdir("/");
+    if (ret == -1) {
+        exit(EXIT_SUCCESS);
+    }
     /* Close all open file descriptors */
     for (fd = sysconf(_SC_OPEN_MAX); fd > 0; fd--) {
         close(fd);
@@ -78,5 +81,5 @@ void daemonize(char * pid_file_name)
     /* Get current PID */
     sprintf(str, "%d\n", getpid());
     /* Write PID to lockfile */
-    write(pid_fd, str, strlen(str));
+    ret = write(pid_fd, str, strlen(str));
 }
