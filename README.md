@@ -1,5 +1,5 @@
 # enjoy
-## map joystick events to mouse/key events
+## A daemon to map joystick events to mouse/key events
 
 Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is specially written for this device to map joystick events to mouse or key events. It should work with other joysticks but not tested.
 
@@ -22,52 +22,61 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
     * `4` = scroll up
     * `5` = scroll down.
 
-* launch application with `exec ` prefix, for example : `exec st -D`.
-
-* simulate mouse motion by set `axis_as_mouse` to `1`. 
+* simulate mouse motion by set `axis_as_mouse` to `1` in config file. 
 
 * signal handling to pause and resume the event mapping when you want to play game.
 
 ## Build and Install
 
-`enjoy` have no dependencies:
+`enjoy` have no external dependencies:
 
 ```
 make
 sudo make install
-# need reboot or reload udev rules
-# to set correct permission of /dev/uinput.
-udevadm control --reload-rules
-enjoy
+sudo systemctl daemon-reload
+sudo systemctl start enjoy@js0
+sudo systemctl enable enjoy@js0
 ```
 
-If you want to build with Xtst support(maybe slow performance than uinput), use:
+## Usage: 
+
+enjoy [-D] [-h] [-k] [-c configfile] [-p pidfile]
+
+Args:
+
+`-D`: debug mode, do not daemonize. useful to find which joystick key not mapped.
+
+`-k`: show 'keyname' can be used in config file.
+
+`-c <configfile>`: specify config file.
+
+`-p <pidfile>`: specify pid file.
+
+`-h`: show this message.
+
+For more than one joysticks, You need to create multiple config files under `/etc/enjoy/<device name>`, for example:
+
+If you have two joysticks 'js0' and 'js1', you should create  `/etc/enjoy/js0` for 'js0' and `/etc/enjoy/js1` for 'js1',
+
+and run:
 
 ```
-make withx
-enjoy-with-x -x
+sudo systemctl start enjoy@js0 enjoy@js1
+sudo systemctl enable enjoy@js0 enjoy@js1
 ```
 
-## Usage
+if you want to suspend the events mapping, for example: js0:
 
-`-D` : enable debug mode. very helpful to find out which joystick "key" should be mapped.
+```
+enjoyctl js0 suspend
+```
+or 
 
-`-n` : ignore default configuration.
+```
+enjoyctl js0 resume
+```
+to suspend and resume event mapping.
 
-`-k` : print out 'enjoy keyname' can be used in config file.
-
-`-c <config file name>` : load another config file instead of `~/.config/enjoyrc`. 
-
-`-h` : show help message.
-
-For more than one joysticks, You may need to create multiple config files under `~/.config` and launch multiple `enjoy` instance.
-
-If you build enjoy with Xtest support:
-
-`-x` : to use 'Xtest' instead of 'uinput' to simulate mouse/key events.
-
-if you want to play game, please run 'killall -SIGUSR1 enjoy' to pause the event mapping,
-after game, run 'killall -SIGUSR2 enjoy' to resume it.
 
 ## Default configuration
 Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
@@ -96,15 +105,13 @@ axis0_button1_right=right
 
 ```
 
-You can create your own config file such as `~/.config/enjoyrc` or `~/.config/<your config file>`.
-
 And, `enjoy`.
 
 ## TODO
 
-* Conver it to a daemon and run only one instance, it should not be a user specific process.
+* ~~Conver it to a daemon and run only one instance, it should not be a user specific process.~~
 
-* Add a control interface, maybe via unix domain socket to suspend and resume, consider to use epoll to handle multiple fd events.
+* ~~Add a control interface, maybe via unix domain socket to suspend and resume, consider to use epoll to handle multiple fd events.~~
 
 * ~~Finish uinput support and make X optional. after that, enjoy should work well with wayland.~~
 
