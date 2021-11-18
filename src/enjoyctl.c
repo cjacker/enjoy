@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 
     char *device = argv[1];
     char *action = argv[2];
-    if(!strstr("suspend action toggle", action)) {
+    if(!strstr("suspend resume toggle", action)) {
         usage();
         exit(EXIT_FAILURE);
     }
