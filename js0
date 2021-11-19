@@ -1,12 +1,38 @@
-#default config file for devterm.
+# default config file for Devterm.
+
+# joystick device
 device=/dev/input/js0
+
+# x button of Devterm
+# map to 'cmd' key (win key)
 button_0=super_l
+
+# a button of Devterm
+# map to mouse right button
 button_1=mouse_button 3
+
+# b button of Devterm
+# map to mouse left button
 button_2=mouse_button 1
+
+# y button of Devterm
+# map to control key
 button_3=ctrl_l 
+
+# select button of Devterm
+# map to combined keys
 button_8=super_l+end
+
+# start button of Devterm
+# map to combined keys
 button_9=super_l+d
+
+# use axis as mouse motion. 
 axis0_as_mouse=1
+
+# map axis to up/down/left/right
+# need set axis0_as_mouse to 0,
+# otherwise below settings will be ignored.
 axis0_button1_up=up
 axis0_button1_down=down
 axis0_button0_left=left

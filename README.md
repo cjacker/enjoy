@@ -12,8 +12,9 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
 * support both X and wayland, even console. since `enjoy` use kernel uinput to simulate key/mouse events.
 
 * simulate key event  use 'keyname'. support single or combined keys with `+` delimiter, for example : `super_l+shift_l+q`.
+    * for 'keyname' can be used in config file, please use `enjoy -k` for more information.
 
-* simulate key sequence use `keyseq ` prefix and continue with 'keyname', for example : `keyseq control_l+g c`.
+* simulate key sequence use `keyseq ` prefix and continue with 'keyname' sequence, for example : `keyseq control_l+g c`.
 
 * simulate mouse button, use `mouse_button ` prefix, continue with a 'button number'. 
     * `1` = left button
@@ -22,9 +23,9 @@ Recently, I got a [DevTerm](https://www.clockworkpi.com/devterm) and `enjoy` is 
     * `4` = scroll up
     * `5` = scroll down.
 
-* simulate mouse motion by set `axis_as_mouse` to `1` in config file. 
+* simulate mouse motion by set `axis<n>_as_mouse` to `1` in config file. 
 
-* signal handling to pause and resume the event mapping when you want to play game.
+* use `enjoyctl` to pause and resume the event mapping as you need.
 
 ## Build and Install
 
@@ -60,48 +61,71 @@ If you have two joysticks 'js0' and 'js1', you should create  `/etc/enjoy/js0` f
 
 and run:
 
-```
-sudo systemctl start enjoy@js0 enjoy@js1
-sudo systemctl enable enjoy@js0 enjoy@js1
+```shell
+sudo systemctl start enjoy@js0 
+sudo systemctl start enjoy@js1
+sudo systemctl enable enjoy@js0 
+sudo systemctl enable enjoy@js1
 ```
 
-if you want to suspend the events mapping, for example: js0:
+if you want to suspend and resume the events mapping, for example: js0,
+
+for suspend:
 
 ```
 enjoyctl js0 suspend
 ```
-or 
+
+for resume:
 
 ```
 enjoyctl js0 resume
 ```
-to suspend and resume event mapping.
 
 
 ## Default configuration
 Since I am a heavy user of i3wm, the default configuration for DevTerm set to:
 
 ```ini
+# default config file for Devterm.
+
 # joystick device
 device=/dev/input/js0
-# button x of DevTerm
+
+# x button of Devterm
+# map to 'cmd' key (win key)
 button_0=super_l
-# button a of DevTerm
+
+# a button of Devterm
+# map to mouse right button
 button_1=mouse_button 3
-# button b of DevTerm
+
+# b button of Devterm
+# map to mouse left button
 button_2=mouse_button 1
-# button y of DevTerm
-button_3=control_l
-# button select of DevTerm
+
+# y button of Devterm
+# map to control key
+button_3=ctrl_l
+
+# select button of Devterm
+# map to combined keys
 button_8=super_l+end
-# button start of DevTerm
+
+# start button of Devterm
+# map to combined keys
 button_9=super_l+d
-# set it to 0 to use axis to simulate key/mouse event.
+
+# use axis as mouse motion.
 axis0_as_mouse=1
-axis0_button0_up=up
-axis0_bttton0_down=down
-axis0_button1_left=left
-axis0_button1_right=right
+
+# map axis to up/down/left/right
+# need set axis0_as_mouse to 0,
+# otherwise below settings will be ignored.
+axis0_button1_up=up
+axis0_button1_down=down
+axis0_button0_left=left
+axis0_button0_right=right
 
 ```
 
