@@ -47,9 +47,10 @@ void fake_key_uinput(int fd, char *keyname, int state)
         keymap *km = get_keymap_by_name(token);
         if(km->name != NULL) {
             if(debug_mode)
-                fprintf(stderr, "uinput: %s, %s, %d, %d\n", km->name, km->xkeyname, km->uinpcode, state);
+                fprintf(stderr, "Uinput: %s, %s, %d, %d\n", km->name, km->xkeyname, km->uinpcode, state);
             if(km->uinpcode == 0) {
-                fprintf(stderr, "Wrong keyname: %s\nPlease run 'enjoy -k'\n", token);
+                if(debug_mode)
+                    fprintf(stderr, "Wrong keyname: %s\nPlease run 'enjoy -k'\n", token);
                 return;
             }
             emit(fd, EV_KEY, km->uinpcode, state);

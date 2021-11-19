@@ -35,10 +35,10 @@ Map joystick events to mouse or key events.
 int pid_fd;
 static int running = 1;
 
-static char *pid_filename = NULL;
-static char * config_filename = NULL;
 /* global config */
 struct cfg_struct *cfg;
+
+static char *pid_filename = NULL;
 
 int uinput_fd = -1;
 int debug_mode = 0;
@@ -150,15 +150,15 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
     char *value = (char *)cfg_get(cfg, key);
 
     if(debug_mode) {
-        fprintf(stderr, "'%s' %s\n", key, state ? "pressed" : "released"); 
+        fprintf(stderr, "Key: '%s', State: '%s'\n", key, state ? "pressed" : "released"); 
     }
 
     if(value == NULL) {
-        fprintf(stderr, "'%s' not map\n", key);
+        fprintf(stderr, "Key '%s' not map\n", key);
         return;
     } else {
         if(debug_mode)
-            fprintf(stderr, "'%s' map to '%s'\n", key, value);
+            fprintf(stderr, "Key '%s' map to '%s'\n", key, value);
     }
 
     /* keyseq */
@@ -171,21 +171,6 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
         return;
     }
 
-/* since enjoy is system level daemon, 
-   exec can not and should not supported anymore */
-#if 0 
-    /* exec */    
-    if(strncasecmp (value, "exec ", 5) == 0) {
-        /* run cmd only on key press */
-        if(state == 1) {
-            value += 5; /* command with args */
-            char cmd[strlen(value)+1];
-            sprintf(cmd, "%s &", value);
-            int ret = system(cmd);
-        } 
-        return;    
-    }
-#endif
     /* 'mouse_button <n>': value + 13 is 'n' */
     if(strncasecmp (value, "mouse_button ", 13) == 0) {
         value += 13;
@@ -250,19 +235,45 @@ size_t get_axis_state(struct js_event *event, struct axis_state axes[3])
     return axis;
 }
 
+/* Init control socket */
+int init_ctl_socket(char *sock_path)
+{
+    int fd;
+    int len;
+    struct sockaddr_un local;
+
+    if((fd = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
+    {
+        perror("Error creating server socket");
+        exit(EXIT_FAILURE);
+    }
+
+    local.sun_family = AF_UNIX;
+    strcpy(local.sun_path, sock_path);
+    unlink(local.sun_path);
+    len = strlen(local.sun_path) + sizeof(local.sun_family);
+    if(bind(fd, (struct sockaddr *)&local, len) == -1)
+    {
+        perror("binding");
+        exit(EXIT_FAILURE);
+    }
+
+    return fd;
+}
+
 /* show help infomation */
 void usage()
 {
     printf("enjoy - map joystick events and convert to mouse/key event\n"
            "        By cjacker <cjacker@foxmail.com>\n\n"
-           "Usage: enjoy [-D] [-h] [-k] [-c configfile] [-p pidfile]\n\n"
+           "Usage: enjoy [-D] [-h] [-k] [-c configfile] [-d device] [-p pidfile]\n\n"
            "Args:\n"
            " -D: debug mode.\n"
            " -c <configfile> : specify config file.\n"
            " -p <pidfile> : specify pid file.\n"
            " -k: print 'keyname' can be used in config file.\n"
            " -h: show this message.\n\n"
-           "Config file format:\n"
+           "Config file:\n"
            " enjoy's config file use 'key=value' format,\n"
            " the key is the name of joystick event (use debug mode to find out),\n"
            " the value of key has below formats:\n"
@@ -276,33 +287,6 @@ void usage()
            "For more information, please refer to README.md\n");
     exit(0);
 }
-
-int init_ctl_socket(char *sock_path)
-{
-    int fd;
-    int len;
-    struct sockaddr_un local;
-
-    if((fd = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
-    {
-        perror("Error creating server socket");
-        exit(1);
-    }
-
-    local.sun_family = AF_UNIX;
-    strcpy(local.sun_path, sock_path);
-    unlink(local.sun_path);
-    len = strlen(local.sun_path) + sizeof(local.sun_family);
-    if(bind(fd, (struct sockaddr *)&local, len) == -1)
-    {
-        perror("binding");
-        exit(1);
-    }
-
-    return fd;
-}
-
-
 int main(int argc, char *argv[])
 {
     int ctl_sock_fd;
@@ -314,7 +298,8 @@ int main(int argc, char *argv[])
 
     int ret;
 
-    const char *device;
+    const char *device = NULL;
+    const char *config_filename = NULL;
 
     struct js_event event;
     struct axis_state axes[3] = {0};
@@ -354,21 +339,26 @@ int main(int argc, char *argv[])
     }
 
     device = cfg_get(cfg, "device");
+    if(!device) {
+        fprintf(stderr, "wrong config file format, \n"
+                        "please add 'device=<joystick dev path>' to config file '%s'.\n", config_filename);
+        exit(EXIT_FAILURE);
+    }
  
-    if(access(device, R_OK) != 0) {
-        fprintf(stderr, "wrong device in config file: '%s'\n", device);
+    if(device && access(device, R_OK) != 0) {
+        fprintf(stderr, "wrong device: '%s'\n", device);
         exit(EXIT_FAILURE);
     }
 
-   /* force config_filename equal to device filename. */
-   if(strcmp(basename(config_filename), basename(device))) {
-        fprintf(stderr, "wrong config filename: '%s', should be '%s'\n", config_filename, basename(device));
+    /* force config_filename equal to device filename. */
+    if(strcmp(basename(config_filename), basename(device)) != 0) {
+        fprintf(stderr, "wrong config filename: '%s', should be '%s' as device name\n", config_filename, basename(device));
         exit(EXIT_FAILURE);
-   }
+    }
 
-    if(pid_filename == NULL) {
-    pid_filename = malloc(256);
-    sprintf(pid_filename, "/run/enjoy_%s.pid", basename(config_filename));
+    if(!pid_filename) {
+        pid_filename = malloc(256);
+        sprintf(pid_filename, "/run/enjoy_%s.pid", basename(config_filename));
     }
 
     if(access(pid_filename, R_OK) == 0) {
@@ -388,9 +378,17 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    if(debug_mode) {
+        fprintf(stderr,"joystick '%s' opened, have '%ld' buttons and '%ld' axis\n",
+                       device, 
+                       get_button_count(joystick_fd),
+                       get_axis_count(joystick_fd));
+    }
+
     char *sock_path = malloc(256);
     sprintf(sock_path, "/tmp/enjoy_%s.socket", basename(config_filename)); 
     ctl_sock_fd = init_ctl_socket(sock_path);
+
     chmod(sock_path, 0666);
 
     uinput_fd = init_uinput();
