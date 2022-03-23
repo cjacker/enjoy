@@ -467,7 +467,7 @@ int main(int argc, char *argv[])
                                 break;
 
                             char axis_as_mouse_key[20];
-                            sprintf(axis_as_mouse_key, "axis%ld_as_mouse", axis);
+                            sprintf(axis_as_mouse_key, "axis%zu_as_mouse", axis);
                             /* null to 0. */
                             if(!(atoi(cfg_get(cfg, axis_as_mouse_key) ? cfg_get(cfg, axis_as_mouse_key) : "0"))) {
                                 if(axes[axis].x != 0 || axes[axis].y != 0)
