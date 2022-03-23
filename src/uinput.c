@@ -17,12 +17,19 @@ extern int axis_x_direction;
 extern int axis_y_direction;
 extern int motion_interval;
 
+static void _set_input_time(struct input_event *ie)
+{
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    ie->input_event_sec = time.tv_sec;
+    ie->input_event_usec = time.tv_usec;
+}
 
 void emit(int fd, int type, int code, int val)
 {
     struct input_event ie;
     memset(&ie, 0, sizeof(ie));
-    gettimeofday(&ie.time, NULL);
+    _set_input_time(&ie);
 
     ie.type = type;
     ie.code = code;
