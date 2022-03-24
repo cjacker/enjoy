@@ -30,7 +30,7 @@ Map joystick events to mouse or key events.
 #include "uinput.h"
 #include "daemon.h"
 
-#define MAXEVENTS 64 
+#define MAXEVENTS 64
 
 int pid_fd;
 static int running = 1;
@@ -100,14 +100,14 @@ void fake_key_sequence(char *value)
 
 int is_valid_number(char * string)
 {
-   for(int i = 0; i < strlen( string ); i ++)
-   {
-      //ASCII value of 0 = 48, 9 = 57. So if value is outside of numeric range then fail
-      //Checking for negative sign "-" could be added: ASCII value 45.
-      if (string[i] < 48 || string[i] > 57)
-         return 0;
-   }
-   return 1;
+    for(int i = 0; i < strlen( string ); i ++)
+    {
+        //ASCII value of 0 = 48, 9 = 57. So if value is outside of numeric range then fail
+        //Checking for negative sign "-" could be added: ASCII value 45.
+        if (string[i] < 48 || string[i] > 57)
+            return 0;
+    }
+    return 1;
 }
 
 /* axis: is axis event or not
@@ -130,9 +130,9 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
             }
             if (y == 32767) {
                 axis_down_press = state;
-                sprintf(key, "axis%d_button%d_down", axis_n, button_n);            
+                sprintf(key, "axis%d_button%d_down", axis_n, button_n);
             }
-        } 
+        }
         if(y == 0) {
             if (x == -32767) {
                 axis_left_press = state;
@@ -140,17 +140,17 @@ void fake_button_event(int axis, int axis_n, int x, int y, int button_n, int sta
             }
             if (x == 32767) {
                 axis_right_press = state;
-                sprintf(key, "axis%d_button%d_right",axis_n, button_n);            
+                sprintf(key, "axis%d_button%d_right",axis_n, button_n);
             }
-        } 
+        }
     } else {
-        sprintf(key, "button_%d", button_n); 
+        sprintf(key, "button_%d", button_n);
     }
-   
+
     char *value = (char *)cfg_get(cfg, key);
 
     if(debug_mode) {
-        fprintf(stderr, "Key: '%s', State: '%s'\n", key, state ? "pressed" : "released"); 
+        fprintf(stderr, "Key: '%s', State: '%s'\n", key, state ? "pressed" : "released");
     }
 
     if(value == NULL) {
@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
                         "please add 'device=<joystick dev path>' to config file '%s'.\n", config_filename);
         exit(EXIT_FAILURE);
     }
- 
+
     if(device && access(device, R_OK) != 0) {
         fprintf(stderr, "wrong device: '%s'\n", device);
         exit(EXIT_FAILURE);
@@ -380,13 +380,13 @@ int main(int argc, char *argv[])
 
     if(debug_mode) {
         fprintf(stderr,"joystick '%s' opened, have '%ld' buttons and '%ld' axis\n",
-                       device, 
+                       device,
                        get_button_count(joystick_fd),
                        get_axis_count(joystick_fd));
     }
 
     char *sock_path = malloc(256);
-    sprintf(sock_path, "/tmp/enjoy_%s.socket", basename(config_filename)); 
+    sprintf(sock_path, "/tmp/enjoy_%s.socket", basename(config_filename));
     ctl_sock_fd = init_ctl_socket(sock_path);
 
     chmod(sock_path, 0666);
@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
         perror ("epoll_ctl");
         abort ();
     }
- 
+
     ep_jevent.data.fd = joystick_fd;
     ep_jevent.events = EPOLLIN;
     ret = epoll_ctl (epoll_fd, EPOLL_CTL_ADD, joystick_fd, &ep_jevent);
@@ -437,7 +437,7 @@ int main(int argc, char *argv[])
                 close (ep_events[i].data.fd);
                 continue;
             } else if (ctl_sock_fd == ep_events[i].data.fd) {
-                char buff[16]; 
+                char buff[16];
                 struct sockaddr_un from;
                 socklen_t fromlen = sizeof(from);
                 recvfrom(ep_events[i].data.fd, buff, 16, 0, (struct sockaddr *)&from, &fromlen);
@@ -459,15 +459,15 @@ int main(int argc, char *argv[])
                         axis = get_axis_state(&event, axes);
                         if (axis < 3) {
                             if(debug_mode)
-                                fprintf(stderr, "Axis %zu button %d at (%6d, %6d)\n", 
+                                fprintf(stderr, "Axis %zu button %d at (%6d, %6d)\n",
                                         axis, event.number,  axes[axis].x, axes[axis].y);
-                             
+
                             /* buttons will generate AXIS event too, ignore it. */
                             if(abs(axes[axis].x) == 1 || abs(axes[axis].y) == 1)
                                 break;
 
                             char axis_as_mouse_key[20];
-                            sprintf(axis_as_mouse_key, "axis%ld_as_mouse", axis);
+                            sprintf(axis_as_mouse_key, "axis%zu_as_mouse", axis);
                             /* null to 0. */
                             if(!(atoi(cfg_get(cfg, axis_as_mouse_key) ? cfg_get(cfg, axis_as_mouse_key) : "0"))) {
                                 if(axes[axis].x != 0 || axes[axis].y != 0)
@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
                                         fake_button_event(1, axis, 0, -32767, event.number, 0);
                                     if(axis_down_press)
                                         fake_button_event(1, axis, 0, 32767, event.number, 0);
-                                    if(axis_left_press) 
+                                    if(axis_left_press)
                                         fake_button_event(1, axis, -32767, 0, event.number, 0);
                                     if(axis_right_press)
                                         fake_button_event(1, axis, 32767, 0, event.number, 0);
@@ -486,7 +486,7 @@ int main(int argc, char *argv[])
                             } else {
                                 axis_x_direction = axes[axis].x==0 ? 0 : -(axes[axis].x < 0) | 1; /*convert it to -1, 0, 1 */
                                 axis_y_direction = axes[axis].y==0 ? 0 : -(axes[axis].y < 0) | 1; /*convert it to -1, 0, 1 */
-                                if(axes[axis].x == 0 && axes[axis].y == 0) { 
+                                if(axes[axis].x == 0 && axes[axis].y == 0) {
                                     pthread_join(motion_thread_t, NULL);
                                     motion_thread_created = 0;
                                     /* restore move intervals.*/
@@ -503,7 +503,7 @@ int main(int argc, char *argv[])
                         break;
                  }
                  continue;
-            } 
+            }
         }
     }
 
